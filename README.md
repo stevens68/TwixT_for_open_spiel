@@ -19,7 +19,7 @@ C++ implementation of the board game [TwixT](https://en.wikipedia.org/wiki/TwixT
 
 board_size must be in [5..24], default=8
 
-![TwixT board](https://github.com/stevens68/TwixT-for-open_spiel/blob/master/pics/12x12game.JPG "TwixT board")
+![TwixT board](https://github.com/stevens68/TwixT_for_open_spiel/blob/master/pics/12x12game.JPG "TwixT board")
 
 
 ## Rules
@@ -38,5 +38,5 @@ board_size must be in [5..24], default=8
 * The state vector has shape {11, board_size, board_size-2} 
 
 <p align="center">
-<img src="https://github.com/stevens68/TwixT-for-open_spiel/blob/master/pics/animation_classic.gif" alt="6x6 game animation" width="700">
+<img src="https://github.com/stevens68/TwixT_for_open_spiel/blob/master/pics/animation_classic.gif" alt="6x6 game animation" width="700">
 </p>
