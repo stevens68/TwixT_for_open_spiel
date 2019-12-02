@@ -17,7 +17,12 @@ C++ implementation of the board game [TwixT](https://en.wikipedia.org/wiki/TwixT
     python examples/examply.py --game=twixt\(board_size=12,ansi_color_output=false,discount=0.999\)
 
 
-board_size must be in [5..24], default=8
+* board_size must be in [5..24], default=8
+* discount must be in [0.0..1.0], default=1.0
+* ansi_color_output must be true|false, default true
+* draw_check must be true|false, default false (experimental)
+
+Note: draw_check is to detect draw games early, i.e. before a player runs out of legal moves. 
 
 ![TwixT board](https://github.com/stevens68/TwixT_for_open_spiel/blob/master/pics/12x12game.JPG "TwixT board")
 
@@ -27,9 +32,9 @@ board_size must be in [5..24], default=8
 * player 1 (X, red) plays from top to bottom, player 2 (O, blue) plays from left to right.
 * If a player has no more legal moves left - when it's his turn - the game is a draw.
 * The pie rule (a.k.a. swap rule) is implemented like this: 
-  * player 2 decides to swap by choosing the same square as player 1 at the first move.
-  * the red peg is repositioned 90° clockwise and converted to blue.
-  * If player 1 puts his first peg on the border line, player 2 cannot swap.
+  * player 2 decides to swap by choosing the same square as player 1.
+  * the red peg is removed and a blue peg is positioned 90° clockwise instead.
+  * Note: if player 1 puts his first peg on the border line, player 2 cannot swap.
   
 ## InformationStateAsNormalizedVector
 * for each player we ignore the opponent's boarder lines, so the size of a plane is board_size x (board_size-2).
