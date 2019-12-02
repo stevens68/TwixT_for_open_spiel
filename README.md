@@ -2,6 +2,8 @@
 
 C++ implementation of the board game [TwixT](https://en.wikipedia.org/wiki/TwixT) for deepmind's framework [open_spiel](https://github.com/deepmind/open_spiel).
 
+![TwixT board](https://github.com/stevens68/TwixT_for_open_spiel/blob/master/pics/12x12game.JPG "TwixT board")
+
 ## Installation
 
 * Copy games/twixt* into the games folder of your open_spiel installation
@@ -24,7 +26,7 @@ C++ implementation of the board game [TwixT](https://en.wikipedia.org/wiki/TwixT
 
 Note: draw_check is to detect draw games early, i.e. before a player runs out of legal moves. 
 
-![TwixT board](https://github.com/stevens68/TwixT_for_open_spiel/blob/master/pics/12x12game.JPG "TwixT board")
+
 
 
 ## Rules
