@@ -12,6 +12,7 @@
 #include <unordered_set>
 
 #include "open_spiel/spiel.h"
+#include "open_spiel/games/twixtboard.h"
 
 // https://en.wikipedia.org/wiki/TwixT
 
@@ -73,12 +74,18 @@ enum Outlook {
 };
 
 
+static std::pair<int, int> operator+(const std::pair<int, int> & l,const std::pair<int, int> & r) {
+    return {l.first+r.first,l.second+r.second};
+};
+
+typedef std::pair<int, int> Coordinates;
+
+
 // 8 link descriptors store the properties of a link direction
 struct {
 	std::pair<int, int> offsets;      // offset of the target peg, e.g. (2, -1) for ENE
 	std::vector<std::pair<std::pair<int, int>, int>> blockingLinks;
 } typedef LinkDescriptor;
-
 
 struct Cell {
 	int peg = OVERBOARD;
@@ -151,17 +158,15 @@ private:
 	bool mDrawCheck;
 
 	void InitializeBoards();
-	void UpdateOutlook(int, int);
+	void UpdateOutlook(Coordinates);
 
-	void SetSurroundingLinks(int, int);
+	void SetSurroundingLinks(Coordinates);
 
-	void ExploreLocalGraph(Board *, int ,int , PegSet *);
+	void ExploreLocalGraph(Board *, Coordinates , PegSet *);
 
 	void AddBinaryPlane(std::vector<double>*) const;
 	void AddLinkPlane(int, int, std::vector<double>*) const;
 	void AddPegPlane(int, std::vector<double>*) const;
-	void AppendLinkChar(std::string *s, int, int , enum LinkDirections, std::string) const;
-	void AppendPegChar(std::string *, int, int) const;
 
 };
 
@@ -219,34 +224,35 @@ void initializePegs(Board *);
 void initializeDrawPath(Board *b, int);
 void initializeLegalActions(Board *b, int, std::vector<Action> *);
 
-std::string coordsToString(int, int, int);
+std::string coordsToString(Coordinates, int);
 
 void removeLegalAction(std::vector<Action> *, Action);
-bool findDrawPath(Board *, int, int, int, int, Board);
+bool findDrawPath(Board *, Coordinates, int, int, Board);
 
 
-bool isOnBorderline(int, int, int, int, bool);
-bool isOnMargin(int, int, int, bool);
+bool isOnBorderline(Coordinates, int, int);
+bool isOnMargin(Coordinates, int);
 
-bool isInPegSet(PegSet *, int, int);
-void addToPegSet(PegSet *, int, int);
-bool isLinkInDrawPath(Board *, int, int, int, int);
-bool isPegInDrawPath(std::vector<int> *, int, int, int);
-int getAction(int, int, int);
+bool isInPegSet(PegSet *, Coordinates);
+void addToPegSet(PegSet *, Coordinates);
+bool isLinkInDrawPath(Board *, Coordinates, int, int);
+bool isPegInDrawPath(std::vector<int> *, Coordinates, int);
+int getAction(Coordinates, int);
 
-void appendBeforeRow(Board *, std::string *, int, int);
-void appendPegRow(Board *, std::string *, int, int);
-void appendAfterRow(Board *, std::string *, int, int);
+void appendBeforeRow(Board *, std::string *, Coordinates);
+void appendPegRow(Board *, std::string *, Coordinates);
+void appendAfterRow(Board *, std::string *, Coordinates);
 
-void appendLinkChar(Board *, std::string *, int, int, enum LinkDirections, std::string);
+void appendLinkChar(Board *, std::string *, Coordinates, enum LinkDirections, std::string);
 void appendColorString(std::string *, bool, std::string, std::string);
-void appendPegChar(Board *, std::string *, int, int);
+void appendPegChar(Board *, std::string *, Coordinates);
 
 int getOppDir(int);
-int getLinkCode(int, int, int, int);
-void setBlockers(Board *, int, int, int, int, LinkDescriptor *, bool);
+int getLinkCode(Coordinates, int, int);
+void setBlockers(Board *, Coordinates, Coordinates, LinkDescriptor *, bool);
 std::string linkCodeToString(int, int);
 void printDrawPath(std::vector<int> *, int, std::string);
+Coordinates getNeighbour(Coordinates, Coordinates);
 
 
 // twixt board:
@@ -302,7 +308,7 @@ void printDrawPath(std::vector<int> *, int, std::string);
 // we store existing links redundantly on the board, i.e. from both peg's perspective,
 
 // table of 8 link descriptors
-std::vector<LinkDescriptor> kLinkDescriptorTable
+static std::vector<LinkDescriptor> kLinkDescriptorTable
 {
 	// NNE
 	{
