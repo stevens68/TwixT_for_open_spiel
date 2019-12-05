@@ -38,11 +38,11 @@ const std::string kAnsiBlue = "\e[94m";
 const std::string kAnsiDefault = "\e[0m";
 
 // colors
-const int RED = 0;  // player, peg color, board index, square
+const int RED = 0;  // player, peg color, board index
 const int BLUE = 1; // player, peg color, board index
 const int EMPTY = -2; // peg color
 const int OVERBOARD = -3; // peg color
-const int DEADEND = -4; // peg square color for draw detection
+const int DEADEND = -4; // peg color, for draw detection only
 
 
 // eight directions of links from 0 to 7
@@ -57,7 +57,10 @@ enum LinkDirections {
   NNW = 7,  // North-North-West, 2 up, 1 left
 };
 
-const int LINKORDER[kNumPlayers][kNumLinkDirections] = { {4, 3, 5, 2, 6, 1, 7, 0}, {1, 2, 0, 3, 7, 4, 6, 5} };
+const int LINKORDER[kNumPlayers][kNumLinkDirections] = {
+		//{4, 3, 5, 2, 6, 1, 7, 0}, {1, 2, 0, 3, 7, 4, 6, 5}
+		{7, 0, 6, 1, 5, 2, 4, 3}, {2, 1, 3, 0, 4, 7, 5, 6}
+};
 
 // result outlook
 enum Outlook {
@@ -94,10 +97,11 @@ struct {
 	std::vector<std::vector<Cell>> cell;
 	PegSet linkedToStart[kNumPlayers];
 	PegSet linkedToEnd[kNumPlayers];
-	std::vector<int> drawPath[kNumPlayers];
-	bool canWin[kNumPlayers] = { true, true };
 	int boardSize;
 	bool ansiColorOutput;
+	// for drawcheck only
+	std::vector<int> drawPath[kNumPlayers];
+	bool canWin[kNumPlayers] = { true, true };
 } typedef Board;
 
 
@@ -215,7 +219,7 @@ void initializePegs(Board *);
 void initializeDrawPath(Board *b, int);
 void initializeLegalActions(Board *b, int, std::vector<Action> *);
 
-std::string coordsToString(int, int);
+std::string coordsToString(int, int, int);
 
 void removeLegalAction(std::vector<Action> *, Action);
 bool findDrawPath(Board *, int, int, int, int, Board);
@@ -227,7 +231,7 @@ bool isOnMargin(int, int, int, bool);
 bool isInPegSet(PegSet *, int, int);
 void addToPegSet(PegSet *, int, int);
 bool isLinkInDrawPath(Board *, int, int, int, int);
-bool isPegInDrawPath(std::vector<int> *, int, int);
+bool isPegInDrawPath(std::vector<int> *, int, int, int);
 int getAction(int, int, int);
 
 void appendBeforeRow(Board *, std::string *, int, int);
@@ -248,7 +252,7 @@ void printDrawPath(std::vector<int> *, int, std::string);
 // twixt board:
 // * the board has bordSize x bardSize cells
 // * the x-axis (cols) points from left to right,
-// * the y axis (rows) points from top to bottom
+// * the y axis (rows) points from bottom to top
 // * moves/actions are labeled by col & row, e.g. C4, F4, D2, ...
 // * moves/actions are indexed by boardSize * row + col
 // * the virtual board has a margin of 2 rows/cols to avoid overboard checks
@@ -257,7 +261,7 @@ void printDrawPath(std::vector<int> *, int, std::string);
 // * EMPTY = -1, OVERBOARD = -2
 //
 // example 8 x 8 board: red peg at C5 (col/row: [2,4], virtual [4,6]
-//                      red peg at D3 (col/row: [3,2], virtual [5,4]
+//                      red peg at D3 (col/row: [3,6], virtual [5,8]
 //                      blue peg at F5 (col/row: [5,4], virtual [7,6]
 //
 //              A   B   C   D   E   F   G   H
@@ -302,138 +306,138 @@ std::vector<LinkDescriptor> kLinkDescriptorTable
 {
 	// NNE
 	{
-	   {1, -2},   // offset of target peg (2 up, 1 right)
+	   {1,  2},   // offset of target peg (2 up, 1 right)
 	   {           // blocking/blocked links
-			{{0, -1}, LinkDirections::ENE },
+			{{0,  1}, LinkDirections::ENE },
 			{{-1, 0}, LinkDirections::ENE },
 
-			{{ 0, -2}, LinkDirections::ESE },
-			{{ 0, -1}, LinkDirections::ESE },
-			{{-1, -2}, LinkDirections::ESE },
-			{{-1, -1}, LinkDirections::ESE },
+			{{ 0,  2}, LinkDirections::ESE },
+			{{ 0,  1}, LinkDirections::ESE },
+			{{-1,  2}, LinkDirections::ESE },
+			{{-1,  1}, LinkDirections::ESE },
 
-			{{0, -1}, LinkDirections::SSE },
-			{{0, -2}, LinkDirections::SSE },
-			{{0, -3}, LinkDirections::SSE }
+			{{0,  1}, LinkDirections::SSE },
+			{{0,  2}, LinkDirections::SSE },
+			{{0,  3}, LinkDirections::SSE }
 	   }
 	},
 	// ENE
 	{
-	   {2, -1},    // offset of target peg
+	   {2,  1},    // offset of target peg
 	   {           // blocking/blocked links
-			{{ 0, 1}, LinkDirections::NNE },
-			{{ 1, 0}, LinkDirections::NNE },
+			{{ 0, -1}, LinkDirections::NNE },
+			{{ 1,  0}, LinkDirections::NNE },
 
-			{{-1,-1}, LinkDirections::ESE },
-			{{ 0,-1}, LinkDirections::ESE },
-			{{ 1,-1}, LinkDirections::ESE },
+			{{-1,  1}, LinkDirections::ESE },
+			{{ 0,  1}, LinkDirections::ESE },
+			{{ 1,  1}, LinkDirections::ESE },
 
-			{{ 0,-1}, LinkDirections::SSE },
-			{{ 0,-2}, LinkDirections::SSE },
-			{{ 1,-1}, LinkDirections::SSE },
-			{{ 1,-2}, LinkDirections::SSE }
+			{{ 0,  1}, LinkDirections::SSE },
+			{{ 0,  2}, LinkDirections::SSE },
+			{{ 1,  1}, LinkDirections::SSE },
+			{{ 1,  2}, LinkDirections::SSE }
 	   }
 	},
 	// ESE
 	{
-	   { 2, 1},   // offset of target peg
+	   { 2, -1},   // offset of target peg
 	   {           // blocking/blocked links
-			{{ 0, 1}, LinkDirections::NNE },
-			{{ 1, 1}, LinkDirections::NNE },
-			{{ 0, 2}, LinkDirections::NNE },
-			{{ 1, 2}, LinkDirections::NNE },
+			{{ 0, -1}, LinkDirections::NNE },
+			{{ 1, -1}, LinkDirections::NNE },
+			{{ 0, -2}, LinkDirections::NNE },
+			{{ 1, -2}, LinkDirections::NNE },
 
-			{{-1, 1}, LinkDirections::ENE },
-			{{ 0, 1}, LinkDirections::ENE },
-			{{ 1, 1}, LinkDirections::ENE },
+			{{-1, -1}, LinkDirections::ENE },
+			{{ 0, -1}, LinkDirections::ENE },
+			{{ 1, -1}, LinkDirections::ENE },
 
-			{{ 0,-1}, LinkDirections::SSE },
-			{{ 1, 0}, LinkDirections::SSE }
+			{{ 0,  1}, LinkDirections::SSE },
+			{{ 1,  0}, LinkDirections::SSE }
 	   }
 	},
 	// SSE
 	{
-	   { 1, 2},   // offset of target peg
+	   { 1, -2},   // offset of target peg
 	   {           // blocking/blocked links
-			{{ 0, 1}, LinkDirections::NNE },
-			{{ 0, 2}, LinkDirections::NNE },
-			{{ 0, 3}, LinkDirections::NNE },
+			{{ 0, -1}, LinkDirections::NNE },
+			{{ 0, -2}, LinkDirections::NNE },
+			{{ 0, -3}, LinkDirections::NNE },
 
-			{{-1, 1}, LinkDirections::ENE },
-			{{ 0, 1}, LinkDirections::ENE },
-			{{-1, 2}, LinkDirections::ENE },
-			{{ 0, 2}, LinkDirections::ENE },
+			{{-1, -1}, LinkDirections::ENE },
+			{{ 0, -1}, LinkDirections::ENE },
+			{{-1, -2}, LinkDirections::ENE },
+			{{ 0, -2}, LinkDirections::ENE },
 
-			{{-1, 0}, LinkDirections::ESE },
-			{{ 0, 1}, LinkDirections::ESE }
+			{{-1,  0}, LinkDirections::ESE },
+			{{ 0, -1}, LinkDirections::ESE }
 	   }
 	},
 	// SSW
 	{
-	   {-1, 2},    // offset of target peg
+	   {-1, -2},    // offset of target peg
 	   {           // blocking/blocked links
-			{{-1, 1}, LinkDirections::ENE },
-			{{-2, 2}, LinkDirections::ENE },
+			{{-1, -1}, LinkDirections::ENE },
+			{{-2, -2}, LinkDirections::ENE },
 
-			{{-2, 0}, LinkDirections::ESE },
-			{{-1, 0}, LinkDirections::ESE },
-			{{-2, 1}, LinkDirections::ESE },
-			{{-1, 1}, LinkDirections::ESE },
+			{{-2,  0}, LinkDirections::ESE },
+			{{-1,  0}, LinkDirections::ESE },
+			{{-2, -1}, LinkDirections::ESE },
+			{{-1, -1}, LinkDirections::ESE },
 
-			{{-1,-1}, LinkDirections::SSE },
-			{{-1, 0}, LinkDirections::SSE },
-			{{-1, 1}, LinkDirections::SSE }
+			{{-1,  1}, LinkDirections::SSE },
+			{{-1,  0}, LinkDirections::SSE },
+			{{-1, -1}, LinkDirections::SSE }
 	   }
 	},
 	// WSW
 	{
-	   {-2, 1},   // offset of target peg
+	   {-2, -1},   // offset of target peg
 	   {           // blocking/blocked links
-			{{-2, 2}, LinkDirections::NNE },
-			{{-1, 1}, LinkDirections::NNE },
+			{{-2, -2}, LinkDirections::NNE },
+			{{-1, -1}, LinkDirections::NNE },
 
-			{{-3, 0}, LinkDirections::ESE },
-			{{-2, 0}, LinkDirections::ESE },
-			{{-1, 0}, LinkDirections::ESE },
+			{{-3,  0}, LinkDirections::ESE },
+			{{-2,  0}, LinkDirections::ESE },
+			{{-1,  0}, LinkDirections::ESE },
 
-			{{-2,-1}, LinkDirections::SSE },
-			{{-1,-1}, LinkDirections::SSE },
-			{{-2, 0}, LinkDirections::SSE },
-			{{-1, 0}, LinkDirections::SSE }
+			{{-2,  1}, LinkDirections::SSE },
+			{{-1,  1}, LinkDirections::SSE },
+			{{-2,  0}, LinkDirections::SSE },
+			{{-1,  0}, LinkDirections::SSE }
 	   }
 	},
 	// WNW
 	{
-	   {-2, -1},   // offset of target peg
+	   {-2, 1},   // offset of target peg
 	   {           // blocking/blocked links
-			{{-2, 0}, LinkDirections::NNE },
-			{{-1, 0}, LinkDirections::NNE },
-			{{-2, 1}, LinkDirections::NNE },
-			{{-1, 1}, LinkDirections::NNE },
+			{{-2,  0}, LinkDirections::NNE },
+			{{-1,  0}, LinkDirections::NNE },
+			{{-2, -1}, LinkDirections::NNE },
+			{{-1, -1}, LinkDirections::NNE },
 
-			{{-3, 0}, LinkDirections::ENE },
-			{{-2, 0}, LinkDirections::ENE },
-			{{-1, 0}, LinkDirections::ENE },
+			{{-3,  0}, LinkDirections::ENE },
+			{{-2,  0}, LinkDirections::ENE },
+			{{-1,  0}, LinkDirections::ENE },
 
-			{{-2,-2}, LinkDirections::SSE },
-			{{-1,-1}, LinkDirections::SSE }
+			{{-2,  2}, LinkDirections::SSE },
+			{{-1,  1}, LinkDirections::SSE }
 	   }
 	},
 	// NNW
 	{
-	   {-1, -2},   // offset of target peg
+	   {-1, 2},   // offset of target peg
 	   {           // blocking/blocked links
-			{{-1,-1}, LinkDirections::NNE },
-			{{-1, 0}, LinkDirections::NNE },
-			{{-1, 1}, LinkDirections::NNE },
+			{{-1,  1}, LinkDirections::NNE },
+			{{-1,  0}, LinkDirections::NNE },
+			{{-1, -1}, LinkDirections::NNE },
 
-			{{-2,-1}, LinkDirections::ENE },
-			{{-1,-1}, LinkDirections::ENE },
-			{{-2, 0}, LinkDirections::ENE },
-			{{-1, 0}, LinkDirections::ENE },
+			{{-2,  1}, LinkDirections::ENE },
+			{{-1,  1}, LinkDirections::ENE },
+			{{-2,  0}, LinkDirections::ENE },
+			{{-1,  0}, LinkDirections::ENE },
 
-			{{-2,-2}, LinkDirections::ESE },
-			{{-1,-1}, LinkDirections::ESE }
+			{{-2,  2}, LinkDirections::ESE },
+			{{-1,  1}, LinkDirections::ESE }
 	   }
 	}
 

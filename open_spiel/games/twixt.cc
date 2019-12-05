@@ -68,7 +68,7 @@ std::string TwixTState::ActionToString(int player, Action move) const {
 	string s = "";
 
 	s += char(int('A') + move % mBoardSize);
-	s.append(to_string(move / mBoardSize + 1));
+	s.append(to_string(mBoardSize - move / mBoardSize));
 	return s;
 }
 
@@ -86,7 +86,7 @@ std::string TwixTState::ToString() const {
 	}
 	s.append("\n");
 
-	for (int y = 0 + kMargin; y < mBoardSize + kMargin; y++) {
+	for (int y = mBoardSize -1 + kMargin; y >= kMargin; y--) {
 		// print "before" row
 		s.append("    ");
 		for (int x = 0 + kMargin; x < mBoardSize + kMargin; x++) {
@@ -97,7 +97,7 @@ std::string TwixTState::ToString() const {
 		// print peg row
 		y - kMargin + 1 < 10 ? s.append("  ") : s.append(" ");
 		appendColorString(&s, mAnsiColorOutput, kAnsiBlue,
-				to_string(y - kMargin + 1) + " ");
+				to_string(mBoardSize + kMargin - y) + " ");
 		for (int x = 0 + kMargin; x < mBoardSize + kMargin; x++) {
 			appendPegRow(&b, &s, x, y);
 		}
@@ -217,20 +217,6 @@ std::vector<Action> TwixTState::LegalActions() const {
 	return mLegalActions[mCurrentPlayer];
 }
 
-void removeLegalAction(vector<Action> *la, Action move) {
-	// remove from unsorted vector
-	vector<Action>::iterator it;
-	 it = find(la->begin(), la->end(), move);
-	 if (it != la->end()) la->erase(it);
-
-	 // remove from sorted vector
-	 /*
-	 vector<Action>::iterator it = std::lower_bound(la->begin(), la->end(), move);
-	 if (it != la->end() && *it == move) {
-		 la->erase(it);
-	 }
-	 */
-}
 
 void TwixTState::SetSurroundingLinks(int x, int y) {
 
@@ -290,28 +276,19 @@ void TwixTState::SetSurroundingLinks(int x, int y) {
 
 }
 
-bool isLinkInDrawPath(Board *b, int x, int y, int dir, int color) {
+void removeLegalAction(vector<Action> *la, Action move) {
+	// remove from unsorted vector
+	vector<Action>::iterator it;
+	 it = find(la->begin(), la->end(), move);
+	 if (it != la->end()) la->erase(it);
 
-	vector<int> *wp = &(b->drawPath[color]);
-
-	// if drawPath has size 0, we don't have a drawPath anymore
-	// and we don't have to check again
-	if (wp->size() == 0)
-		false;
-
-	int linkCode = getLinkCode(x, y, dir, b->boardSize);
-	// check if this edge is part of the drawPath
-	vector<int>::iterator it;
-	it = find(wp->begin(), wp->end(), linkCode);
-	return (it != wp->end());
-}
-
-bool isPegInDrawPath(std::vector<int> *wp, int x, int y, int boardSize) {
-
-	// check if this peg is part of the drawPath
-	vector<int>::iterator it;
-	it = find(wp->begin(), wp->end(), getAction(x, y, boardSize));
-	return (it != wp->end());
+	 // remove from sorted vector
+	 /*
+	 vector<Action>::iterator it = std::lower_bound(la->begin(), la->end(), move);
+	 if (it != la->end() && *it == move) {
+		 la->erase(it);
+	 }
+	 */
 }
 
 void TwixTState::DoApplyAction(Action move) {
@@ -428,174 +405,6 @@ void TwixTState::DoApplyAction(Action move) {
 	// toggle current player
 	mCurrentPlayer = 1 - mCurrentPlayer;
 
-}
-
-void initializePegs(Board *b) {
-
-	int virtualBoardSize = b->boardSize + 2 * kMargin;
-
-	//adjust dim 1 of board
-	b->cell.resize(virtualBoardSize);
-
-	//  initialize peg sets to false (2 sets per player)
-	for (int ii = 0; ii < kMaxVirtualBoardSize * kMaxVirtualBoardSize; ii++) {
-		b->linkedToStart[RED][ii] = false;
-		b->linkedToEnd[RED][ii] = false;
-
-		b->linkedToStart[BLUE][ii] = false;
-		b->linkedToEnd[BLUE][ii] = false;
-	}
-
-	// initialize board with pegs (empty or overboard)
-	for (int x = 0; x < virtualBoardSize; x++) {
-		//adjust dim 2 of board
-		b->cell[x].resize(virtualBoardSize);
-
-		for (int y = 0; y < virtualBoardSize; y++) {
-			// links
-			b->cell[x][y].links = 0;
-			b->cell[x][y].blockedLinks = 0;
-			// set pegs to EMPTY, RED or BLUE depending on boardType and position
-			if (isOnMargin(x, y, b->boardSize, true)) {
-				b->cell[x][y].peg = OVERBOARD;
-			} else { // regular board
-				b->cell[x][y].peg = EMPTY;
-			} // if
-		} // for x
-	} // for y
-
-}
-
-void initializeLegalActions(Board *b, int color, vector<Action> *la) {
-
-	la->clear();
-	la->reserve(b->boardSize * b->boardSize);
-
-	int virtualBoardSize = b->boardSize + 2 * kMargin;
-
-	for (int y = 0; y < virtualBoardSize; y++) {
-		for (int x = 0; x < virtualBoardSize; x++) {
-			int action = y * b->boardSize + x;
-			if (!isOnBorderline(x, y, 1 - color, b->boardSize, false)
-					&& !isOnMargin(x, y, b->boardSize, false)) {
-				// legal action for <color> only
-				la->push_back(action);
-			}
-		} // for y
-	} // for x
-}
-
-void initializeDrawPath(Board *b, int color) {
-
-	b->canWin[color] = false;
-	b->drawPath[color].clear();
-
-	Board copyBoard = *b;
-
-	for (int ii = 1; ii < b->boardSize - 1; ii++) {
-		//cerr << to_string(ii) << endl;
-		int x = color == RED ? ii + kMargin : 0 + kMargin;
-		int y = color == RED ? 0 + kMargin : ii + kMargin;
-		copyBoard.drawPath[color].clear();
-
-		// check surrounfing links
-		if (! b->cell[x][y].deadPeg[color]) {
-			if (findDrawPath(b, x, y, -1, color, copyBoard)) {
-				// >>debug
-				//printDrawPath(&(b->drawPath[color]), copyBoard.boardSize, "+++: ");
-				// <<debug
-				b->canWin[color] = true;
-				return;
-			}
-		}
-	}
-
-	//cerr << "NOT FOUND" << endl;
-
-}
-
-int getAction(int x, int y, int boardSize) {
-	return (y - kMargin) * boardSize + (x - kMargin);
-}
-
-bool findDrawPath(Board *b, int x, int y, int dir, int color, Board pb) {
-
-	int nx;
-	int ny;
-
-	if (dir >= 0) {
-		// => set source peg & append source peg code
-		pb.cell[x][y].peg = color;
-		pb.drawPath[color].push_back(getAction(x, y, pb.boardSize));
-		// set link that starts from this peg (found before)
-		int dx = kLinkDescriptorTable[dir].offsets.first;
-		int dy = kLinkDescriptorTable[dir].offsets.second;
-
-		// => set link (both perspectives) and blockers
-		pb.cell[x][y].links |= (1UL << dir);
-		pb.cell[x + dx][y + dy].links |= (1UL << getOppDir(dir));
-		setBlockers(&pb, x, y, dx, dy, &(kLinkDescriptorTable[dir]), false);
-
-		// => append link code
-		int linkCode;
-		if (dir < kNumLinkDirections / 2) {
-			linkCode = getLinkCode(x, y, dir, pb.boardSize);
-		} else {
-			linkCode = getLinkCode(x + dx, y + dy, getOppDir(dir),
-					pb.boardSize);
-		}
-		pb.drawPath[color].push_back(linkCode);
-
-		// check if we reached the opposite borderline
-		int compare = color == RED ? y+dy : x+dx;
-		if (compare == pb.boardSize - 1 + kMargin) {
-			// we reached the opposite borderline line, save drawPath
-			pb.cell[x+dx][y+dy].peg = color;
-			pb.drawPath[color].push_back(getAction(x+dx, y+dy, pb.boardSize));
-			// copy final drawPath
-			b->drawPath[color] = pb.drawPath[color];
-			return true;
-		}
-		nx = x+dx;
-		ny = y+dy;
-	} else {
-		nx = x;
-		ny = y;
-	}
-
-	//printDrawPath((&pb.drawPath[color]), pb.boardSize, "           >:");
-
-	// search deeper..
-	// check surrounding link options...
-	for (int i = 0; i < kNumLinkDirections; i++) {
-		int nDir = LINKORDER[color][i];
-		LinkDescriptor *ld = &(kLinkDescriptorTable[nDir]);
-		int ndx = ld->offsets.first;
-		int ndy = ld->offsets.second;
-
-		if ((!isPegInDrawPath(&(pb.drawPath[color]), nx + ndx, ny + ndy,
-				pb.boardSize))
-				&& (pb.cell[nx + ndx][ny + ndy].peg == color
-						|| pb.cell[nx + ndx][ny + ndy].peg == EMPTY)
-				&& !isOnBorderline(nx + ndx, ny + ndy, 1 - color, pb.boardSize,
-						true)
-				&& !(pb.cell[nx][ny].blockedLinks & (1UL << nDir))
-				&& ! b->cell[nx][ny].deadPeg[color]) {
-			// dir doesn't point to a peg we already visited during this exploration (loop)
-			// AND (target field is empty OR peg has same color)
-			// AND target field is not on opponent's borderline
-			// AND link is not blocked
-			// AND target peg is no dead end that we detected previously
-
-			if (findDrawPath(b, nx, ny, nDir, color, pb)) {
-				return true;
-			}
-		}
-	}
-	// there is no draw path including this peg
-	b->cell[nx][ny].deadPeg[color] = true;
-
-	return false;
 }
 
 void TwixTState::InitializeBoards() {
@@ -809,10 +618,207 @@ TwixTGame::TwixTGame(const GameParameters &params) :
  }
  */
 
+// *********************************************************************
+
 // helper
-std::string coordsToString(int x, int y) {
+bool isLinkInDrawPath(Board *b, int x, int y, int dir, int color) {
+
+	vector<int> *wp = &(b->drawPath[color]);
+
+	// if drawPath has size 0, we don't have a drawPath anymore
+	// and we don't have to check again
+	if (wp->size() == 0)
+		false;
+
+	int linkCode = getLinkCode(x, y, dir, b->boardSize);
+	// check if this edge is part of the drawPath
+	vector<int>::iterator it;
+	it = find(wp->begin(), wp->end(), linkCode);
+	return (it != wp->end());
+}
+
+bool isPegInDrawPath(std::vector<int> *wp, int x, int y, int boardSize) {
+
+	// check if this peg is part of the drawPath
+	vector<int>::iterator it;
+	it = find(wp->begin(), wp->end(), getAction(x, y, boardSize));
+	return (it != wp->end());
+}
+
+
+void initializePegs(Board *b) {
+
+	int virtualBoardSize = b->boardSize + 2 * kMargin;
+
+	//adjust dim 1 of board
+	b->cell.resize(virtualBoardSize);
+
+	//  initialize peg sets to false (2 sets per player)
+	for (int ii = 0; ii < kMaxVirtualBoardSize * kMaxVirtualBoardSize; ii++) {
+		b->linkedToStart[RED][ii] = false;
+		b->linkedToEnd[RED][ii] = false;
+
+		b->linkedToStart[BLUE][ii] = false;
+		b->linkedToEnd[BLUE][ii] = false;
+	}
+
+	// initialize board with pegs (empty or overboard)
+	for (int x = 0; x < virtualBoardSize; x++) {
+		//adjust dim 2 of board
+		b->cell[x].resize(virtualBoardSize);
+
+		for (int y = 0; y < virtualBoardSize; y++) {
+			// links
+			b->cell[x][y].links = 0;
+			b->cell[x][y].blockedLinks = 0;
+			// set pegs to EMPTY, RED or BLUE depending on boardType and position
+			if (isOnMargin(x, y, b->boardSize, true)) {
+				b->cell[x][y].peg = OVERBOARD;
+			} else { // regular board
+				b->cell[x][y].peg = EMPTY;
+			} // if
+		} // for x
+	} // for y
+
+}
+
+void initializeLegalActions(Board *b, int color, vector<Action> *la) {
+
+	la->clear();
+	la->reserve(b->boardSize * b->boardSize);
+
+	int virtualBoardSize = b->boardSize + 2 * kMargin;
+
+	for (int y = 0; y < virtualBoardSize; y++) {
+		for (int x = 0; x < virtualBoardSize; x++) {
+			int action = y * b->boardSize + x;
+			if (!isOnBorderline(x, y, 1 - color, b->boardSize, false)
+					&& !isOnMargin(x, y, b->boardSize, false)) {
+				// legal action for <color> only
+				la->push_back(action);
+			}
+		} // for y
+	} // for x
+}
+
+void initializeDrawPath(Board *b, int color) {
+
+	b->canWin[color] = false;
+	b->drawPath[color].clear();
+
+	Board copyBoard = *b;
+
+	for (int ii = 1; ii < b->boardSize - 1; ii++) {
+		//cerr << to_string(ii) << endl;
+		int x = color == RED ? ii + kMargin : 0 + kMargin;
+		int y = color == RED ? 0 + kMargin : ii + kMargin;
+		copyBoard.drawPath[color].clear();
+
+		// check surrounfing links
+		if (! b->cell[x][y].deadPeg[color]) {
+			if (findDrawPath(b, x, y, -1, color, copyBoard)) {
+				// >>debug
+				//printDrawPath(&(b->drawPath[color]), copyBoard.boardSize, "+++: ");
+				// <<debug
+				b->canWin[color] = true;
+				return;
+			}
+		}
+	}
+
+	//cerr << "NOT FOUND" << endl;
+
+}
+
+int getAction(int x, int y, int boardSize) {
+	return (y - kMargin) * boardSize + (x - kMargin);
+}
+
+bool findDrawPath(Board *b, int x, int y, int dir, int color, Board pb) {
+
+	int nx;
+	int ny;
+
+	if (dir >= 0) {
+		// => set source peg & append source peg code
+		pb.cell[x][y].peg = color;
+		pb.drawPath[color].push_back(getAction(x, y, pb.boardSize));
+		// set link that starts from this peg (found before)
+		int dx = kLinkDescriptorTable[dir].offsets.first;
+		int dy = kLinkDescriptorTable[dir].offsets.second;
+
+		// => set link (both perspectives) and blockers
+		pb.cell[x][y].links |= (1UL << dir);
+		pb.cell[x + dx][y + dy].links |= (1UL << getOppDir(dir));
+		setBlockers(&pb, x, y, dx, dy, &(kLinkDescriptorTable[dir]), false);
+
+		// => append link code
+		int linkCode;
+		if (dir < kNumLinkDirections / 2) {
+			linkCode = getLinkCode(x, y, dir, pb.boardSize);
+		} else {
+			linkCode = getLinkCode(x + dx, y + dy, getOppDir(dir),
+					pb.boardSize);
+		}
+		pb.drawPath[color].push_back(linkCode);
+
+		// check if we reached the opposite borderline
+		int compare = color == RED ? y+dy : x+dx;
+		if (compare == pb.boardSize - 1 + kMargin) {
+			// we reached the opposite borderline line, save drawPath
+			pb.cell[x+dx][y+dy].peg = color;
+			pb.drawPath[color].push_back(getAction(x+dx, y+dy, pb.boardSize));
+			// copy final drawPath
+			b->drawPath[color] = pb.drawPath[color];
+			return true;
+		}
+		nx = x+dx;
+		ny = y+dy;
+	} else {
+		nx = x;
+		ny = y;
+	}
+
+	//printDrawPath((&pb.drawPath[color]), pb.boardSize, "           >:");
+
+	// search deeper..
+	// check surrounding link options...
+	for (int i = 0; i < kNumLinkDirections; i++) {
+		int nDir = LINKORDER[color][i];
+		LinkDescriptor *ld = &(kLinkDescriptorTable[nDir]);
+		int ndx = ld->offsets.first;
+		int ndy = ld->offsets.second;
+
+		if ((!isPegInDrawPath(&(pb.drawPath[color]), nx + ndx, ny + ndy,
+				pb.boardSize))
+				&& (pb.cell[nx + ndx][ny + ndy].peg == color
+						|| pb.cell[nx + ndx][ny + ndy].peg == EMPTY)
+				&& !isOnBorderline(nx + ndx, ny + ndy, 1 - color, pb.boardSize,
+						true)
+				&& !(pb.cell[nx][ny].blockedLinks & (1UL << nDir))
+				&& ! b->cell[nx][ny].deadPeg[color]) {
+			// dir doesn't point to a peg we already visited during this exploration (loop)
+			// AND (target field is empty OR peg has same color)
+			// AND target field is not on opponent's borderline
+			// AND link is not blocked
+			// AND target peg is no dead end that we detected previously
+
+			if (findDrawPath(b, nx, ny, nDir, color, pb)) {
+				return true;
+			}
+		}
+	}
+	// there is no draw path including this peg
+	b->cell[nx][ny].deadPeg[color] = true;
+
+	return false;
+}
+
+
+
+std::string coordsToString(int x, int y, int boardSize) {
 	string s;
-	s = char(int('A') + (x - kMargin)) + to_string(y + 1 - kMargin);
+	s = char(int('A') + (x - kMargin)) + to_string(boardSize + kMargin - y);
 	return s;
 }
 
@@ -850,15 +856,15 @@ void addToPegSet(PegSet *p, int x, int y) {
 
 void appendBeforeRow(Board *b, string *s, int x, int y) {
 
-	// -1, -1
+	// -1, +1
 	int len = s->length();
 	appendLinkChar(b, s, x - 1, y, LinkDirections::ENE, "/");
-	appendLinkChar(b, s, x - 1, y + 1, LinkDirections::NNE, "/");
+	appendLinkChar(b, s, x - 1, y - 1, LinkDirections::NNE, "/");
 	appendLinkChar(b, s, x, y, LinkDirections::WNW, "_");
 	if (len == s->length())
 		s->append(" ");
 
-	//  0, -1
+	//  0, +1
 	len = s->length();
 	appendLinkChar(b, s, x, y, LinkDirections::NNE, "|");
 	if (len == s->length())
@@ -866,10 +872,10 @@ void appendBeforeRow(Board *b, string *s, int x, int y) {
 	if (len == s->length())
 		s->append(" ");
 
-	// +1, -1
+	// +1, +1
 	len = s->length();
 	appendLinkChar(b, s, x + 1, y, LinkDirections::WNW, "\\");
-	appendLinkChar(b, s, x + 1, y + 1, LinkDirections::NNW, "\\");
+	appendLinkChar(b, s, x + 1, y - 1, LinkDirections::NNW, "\\");
 	appendLinkChar(b, s, x, y, LinkDirections::ENE, "_");
 	if (len == s->length())
 		s->append(" ");
@@ -880,7 +886,7 @@ void appendPegRow(Board *b, string *s, int x, int y) {
 
 	// -1, 0
 	int len = s->length();
-	appendLinkChar(b, s, x - 1, y + 1, LinkDirections::NNE, "|");
+	appendLinkChar(b, s, x - 1, y - 1, LinkDirections::NNE, "|");
 	appendLinkChar(b, s, x, y, LinkDirections::WSW, "_");
 	if (len == s->length())
 		s->append(" ");
@@ -896,7 +902,7 @@ void appendPegRow(Board *b, string *s, int x, int y) {
 
 	// +1, 0
 	len = s->length();
-	appendLinkChar(b, s, x + 1, y + 1, LinkDirections::NNW, "|");
+	appendLinkChar(b, s, x + 1, y - 1, LinkDirections::NNW, "|");
 	appendLinkChar(b, s, x, y, LinkDirections::ESE, "_");
 	if (len == s->length())
 		s->append(" ");
@@ -904,17 +910,17 @@ void appendPegRow(Board *b, string *s, int x, int y) {
 
 void appendAfterRow(Board *b, string *s, int x, int y) {
 
-	// -1, +1
+	// -1, -1
 	int len = s->length();
-	appendLinkChar(b, s, x + 1, y + 1, LinkDirections::WNW, "\\");
-	appendLinkChar(b, s, x, y + 1, LinkDirections::NNW, "\\");
+	appendLinkChar(b, s, x + 1, y - 1, LinkDirections::WNW, "\\");
+	appendLinkChar(b, s, x, y - 1, LinkDirections::NNW, "\\");
 	if (len == s->length())
 		s->append(" ");
 
-	//  0, +1
+	//  0, -1
 	len = s->length();
-	appendLinkChar(b, s, x - 1, y + 1, LinkDirections::ENE, "_");
-	appendLinkChar(b, s, x + 1, y + 1, LinkDirections::WNW, "_");
+	appendLinkChar(b, s, x - 1, y - 1, LinkDirections::ENE, "_");
+	appendLinkChar(b, s, x + 1, y - 1, LinkDirections::WNW, "_");
 	appendLinkChar(b, s, x, y, LinkDirections::SSW, "|");
 	if (len == s->length()) {
 		appendLinkChar(b, s, x, y, LinkDirections::SSE, "|");
@@ -922,10 +928,10 @@ void appendAfterRow(Board *b, string *s, int x, int y) {
 	if (len == s->length())
 		s->append(" ");
 
-	// -1, +1
+	// -1, -1
 	len = s->length();
-	appendLinkChar(b, s, x - 1, y + 1, LinkDirections::ENE, "/");
-	appendLinkChar(b, s, x, y + 1, LinkDirections::NNE, "/");
+	appendLinkChar(b, s, x - 1, y - 1, LinkDirections::ENE, "/");
+	appendLinkChar(b, s, x, y - 1, LinkDirections::NNE, "/");
 	if (len == s->length())
 		s->append(" ");
 }
@@ -992,7 +998,7 @@ string linkCodeToString(int linkCode, int boardSize) {
 	int dx = kLinkDescriptorTable[dir].offsets.first;
 	int dy = kLinkDescriptorTable[dir].offsets.second;
 
-	return coordsToString(x, y) + "-" + coordsToString(x+dx, y+dy);
+	return coordsToString(x, y, boardSize) + "-" + coordsToString(x+dx, y+dy, boardSize);
 
 }
 
@@ -1048,5 +1054,4 @@ void printDrawPath(vector<int> *dp, int boardSize, string prefix) {
 
 }  // namespace twixt
 }  // namespace open_spiel
-
 
