@@ -22,10 +22,6 @@ C++ implementation of the board game [TwixT](https://en.wikipedia.org/wiki/TwixT
 * board_size must be in [5..24], default=8
 * discount must be in [0.0..1.0], default=1.0
 * ansi_color_output must be true|false, default true
-* draw_check must be true|false, default false (experimental)
-
-Note: draw_check is to detect draw games early, i.e. before a player runs out of legal moves. 
-
 
 
 
