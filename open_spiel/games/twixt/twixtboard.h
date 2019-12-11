@@ -4,7 +4,6 @@
 
 #include "open_spiel/spiel.h"
 #include "open_spiel/games/twixt/twixtcell.h"
-#include "open_spiel/games/twixt/twixtpegset.h"
 
 #include <vector>
 #include <string>
@@ -38,15 +37,12 @@ struct {
 const int kNumPlanes=11;  // 2 * (1 for pegs + 4 for links) + 1 for player to move
 
 
-// result outlook
-enum Outlook {
-  UNKNOWN,
+enum Result {
+  OPEN,
   RED_WON,
   BLUE_WON,
   DRAW,
-  RED_WONTWIN,
-  BLUE_WONTWIN,
-  OUTLOOK_COUNT
+  RESULT_COUNT
 };
 
 // player
@@ -84,13 +80,15 @@ enum Compass {
   COMPASS_COUNT
 };
 
+typedef bool PegSet[kMaxVirtualBoardSize*kMaxVirtualBoardSize];
+
 class Board {
 
 	private:
 		int mMoveCounter = 0;
 		bool mSwapped = false;
 		int mMoveOne;
-		int mOutlook = Outlook::UNKNOWN;
+		int mResult = Result::OPEN;
 		std::vector<std::vector<Cell>> mCell;
 		PegSet mLinkedToBorder[PLAYER_COUNT][BORDER_COUNT];
 		int mSize;
@@ -109,7 +107,7 @@ class Board {
 		bool getAnsiColorOutput() const;
 		void setAnsiColorOutput(bool);
 
-		void setOutlook(int);
+		void setResult(int);
 
 		bool getSwapped() const;
 		void setSwapped(bool);
@@ -127,7 +125,7 @@ class Board {
 		const Cell* getConstCell(Coordinates) const;
 		Cell* getCell(Coordinates);
 
-		void updateOutlook(int, Coordinates);
+		void updateResult(int, Coordinates);
 
 		void initialize();
 		void initializePegs();
@@ -159,7 +157,7 @@ class Board {
 
 		std::string actionToString(int, Action) const;
 		std::string toString() const;
-		int getOutlook() const;
+		int getResult() const;
 		int getMoveCounter() const;
 		void createNormalizedVector(int, std::vector<double> *) const;
 		std::vector<Action> getLegalActions(int) const;

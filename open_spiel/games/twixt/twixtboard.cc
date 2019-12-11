@@ -207,14 +207,14 @@ void Board::initialize() {
 
 }
 
-void Board::updateOutlook(int player, Coordinates c) {
+void Board::updateResult(int player, Coordinates c) {
 
 	// check for WIN
 	bool connectedToStart = isInPegSet(player, Border::START, c);
 	bool connectedToEnd = isInPegSet(player, Border::END, c);
 	if (connectedToStart && connectedToEnd) {
 		// peg is linked to both boarder lines
-		setOutlook(player == PLAYER_RED ? Outlook::RED_WON : Outlook::BLUE_WON);
+		setResult(player == PLAYER_RED ? Result::RED_WON : Result::BLUE_WON);
 		return;
 	}
 
@@ -226,9 +226,10 @@ void Board::updateOutlook(int player, Coordinates c) {
 
 	//check if opponent (player to turn next) has any legal moves left
 	if (! hasLegalActions(1 - player)) {
-		setOutlook(Outlook::DRAW);
+		setResult(Result::DRAW);
 		return;
 	}
+
 }
 
 
@@ -409,20 +410,16 @@ string Board::toString() const {
 	if (mSwapped)
 		s.append("[swapped]");
 
-	switch (mOutlook) {
-	case Outlook::BLUE_WONTWIN:
-		s.append("[O won't win]");
+	switch (mResult) {
+	case Result::OPEN:
 		break;
-	case Outlook::RED_WONTWIN:
-		s.append("[X won't win]");
-		break;
-	case Outlook::RED_WON:
+	case Result::RED_WON:
 		s.append("[X has won]");
 		break;
-	case Outlook::BLUE_WON:
+	case Result::BLUE_WON:
 		s.append("[O has won]");
 		break;
-	case Outlook::DRAW:
+	case Result::DRAW:
 		s.append("[draw]");
 	default:
 		break;
@@ -560,12 +557,12 @@ int Board::getMoveCounter() const {
 	return mMoveCounter;
 }
 
-int Board::getOutlook() const {
-	return mOutlook;
+int Board::getResult() const {
+	return mResult;
 }
 
-void Board::setOutlook(int outlook) {
-	mOutlook = outlook;
+void Board::setResult(int result) {
+	mResult = result;
 }
 
 void Board::setSwapped(bool swapped) {
@@ -697,44 +694,6 @@ void Board::appendAfterRow(string *s, Coordinates c) const {
 
 void Board::applyAction(int player, Action move) {
 
-	// 25 26 15  9  3 21  7 29 13 16 14 28 34 17 20 22 31
-	/*
-	 if (mMoveCounter == 0)
-	 move = 25;
-	 if (mMoveCounter == 1)
-	 move = 26;
-	 if (mMoveCounter == 2)
-	 move = 15;
-	 if (mMoveCounter == 3)
-	 move =  9;
-	 if (mMoveCounter == 4)
-	 move =  3;
-	 if (mMoveCounter == 5)
-	 move = 21;
-	 if (mMoveCounter == 6)
-	 move =  7;
-	 if (mMoveCounter == 7)
-	 move = 29;
-	 if (mMoveCounter == 8)
-	 move = 13;
-	 if (mMoveCounter == 9)
-	 move = 16;
-	 if (mMoveCounter == 10)
-	 move = 14;
-	 if (mMoveCounter == 11)
-	 move = 28;
-	 if (mMoveCounter == 12)
-	 move = 34;
-	 if (mMoveCounter == 13)
-	 move = 17;
-	 if (mMoveCounter == 14)
-	 move = 20;
-	 if (mMoveCounter == 15)
-	 move = 22;
-	 if (mMoveCounter == 16)
-	 move = 31;
-	*/
-
 
 	if (getMoveCounter() == 1) {
 		if (move == getMoveOne()) {
@@ -787,7 +746,7 @@ void Board::applyAction(int player, Action move) {
 	}
 
 	// Update the predicted result and update mCurrentPlayer...
-	updateOutlook(player, c);
+	updateResult(player, c);
 
 }
 

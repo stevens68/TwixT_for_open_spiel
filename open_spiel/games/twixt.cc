@@ -1,3 +1,7 @@
+
+#include "open_spiel/spiel_utils.h"
+
+
 #include "open_spiel/games/twixt.h"
 #include "open_spiel/games/twixt/twixtboard.h"
 
@@ -11,7 +15,6 @@
 
 #include <iostream>
 
-using namespace std;
 
 namespace open_spiel {
 namespace twixt {
@@ -75,22 +78,22 @@ std::string TwixTState::ToString() const {
 
 bool TwixTState::IsTerminal() const {
 
-	int outlook = mBoard.getOutlook();
+	int result = mBoard.getResult();
 
-	return (outlook == Outlook::RED_WON ||
-			outlook == Outlook::BLUE_WON ||
-			outlook == Outlook::DRAW);
+	return (result == Result::RED_WON ||
+			result == Result::BLUE_WON ||
+			result == Result::DRAW);
 }
 
 std::vector<double> TwixTState::Returns() const {
 
 	double reward;
 
-	if (mBoard.getOutlook() == Outlook::RED_WON) {
+	if (mBoard.getResult() == Result::RED_WON) {
 		reward = pow(mDiscount, mBoard.getMoveCounter());
 		//reward = 1.0;
 		return {reward, -reward};
-	} else if (mBoard.getOutlook() == Outlook::BLUE_WON) {
+	} else if (mBoard.getResult() == Result::BLUE_WON) {
 		reward = pow(mDiscount, mBoard.getMoveCounter());
 		//reward = 1.0;
 		return {-reward, reward};
@@ -100,23 +103,23 @@ std::vector<double> TwixTState::Returns() const {
 
 }
 
-std::string TwixTState::InformationState(int player) const {
+std::string TwixTState::InformationStateString(int player) const {
 	return HistoryString();
 }
 
-void TwixTState::InformationStateAsNormalizedVector(int player,
-		vector<double> *values) const {
+void TwixTState::InformationStateTensor(open_spiel::Player player,
+		std::vector<double> *values) const {
 
 	mBoard.createNormalizedVector(mCurrentPlayer, values);
 
 }
 
-std::string TwixTState::Observation(int player) const {
+std::string TwixTState::ObservationString(int player) const {
 	SpielFatalError("Observation is not implemented.");
 	return "";
 }
 
-void TwixTState::ObservationAsNormalizedVector(int player,
+void TwixTState::ObservationTensor(int player,
 		std::vector<double> *values) const {
 	SpielFatalError("ObservationAsNormalizedVector is not implemented.");
 }
@@ -133,8 +136,13 @@ std::vector<Action> TwixTState::LegalActions() const {
 void TwixTState::DoApplyAction(Action move) {
 
 	mBoard.applyAction(mCurrentPlayer, move);
-	// toggle player
-	mCurrentPlayer = 1 - mCurrentPlayer;
+
+	if (mBoard.getResult() == Result::OPEN) {
+		// not terminal, toggle player
+		mCurrentPlayer = 1 - mCurrentPlayer;
+	} else {
+		mCurrentPlayer = kTerminalPlayerId;
+	}
 
 }
 
@@ -153,16 +161,16 @@ TwixTGame::TwixTGame(const GameParameters &params) :
 		) {
 	if (mBoardSize < kMinBoardSize || mBoardSize > kMaxBoardSize) {
 		SpielFatalError(
-				"board_size out of range [" + to_string(kMinBoardSize) + ".."
-						+ to_string(kMaxBoardSize) + "]: "
-						+ to_string(mBoardSize) + "; ");
+				"board_size out of range [" + std::to_string(kMinBoardSize) + ".."
+						+ std::to_string(kMaxBoardSize) + "]: "
+						+ std::to_string(mBoardSize) + "; ");
 	}
 
 	if (mDiscount <= kMinDiscount || mDiscount > kMaxDiscount) {
 		SpielFatalError(
-				"discount out of range [" + to_string(kMinDiscount)
-						+ " < discount <= " + to_string(kMaxDiscount) + "]: "
-						+ to_string(mDiscount) + "; ");
+				"discount out of range [" + std::to_string(kMinDiscount)
+						+ " < discount <= " + std::to_string(kMaxDiscount) + "]: "
+						+ std::to_string(mDiscount) + "; ");
 	}
 }
 
