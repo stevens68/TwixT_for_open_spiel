@@ -36,7 +36,7 @@ C++ implementation of the board game [TwixT](https://en.wikipedia.org/wiki/TwixT
   
 ## InformationStateTensor
 * for each player we ignore the opponent's boarder lines, so the size of a plane is board_size x (board_size-2).
-* for each player there are 5 planes: 1 plane for the unlinked pegs and 4 planes for the links pointing to eastern directions (North-North-East, East-North-East, East-South-East, South-South-East). See example below. Plane 1 is for the unlinked pegs only, because the linked ones can be derived from the other four planes.
+* for each player there are 5 planes: 1 plane for the unlinked pegs and 4 planes for the links pointing to eastern directions (North-North-East, East-North-East, East-South-East, South-South-East). See example below. We consider the unlinked pegs only, because the linked ones can be derived from the other four planes.
 * Plane 11 encodes the player to move next: all 0 for player 1, all 1 for player 2.
 * The state vector has shape {11, board_size, board_size-2} 
 
