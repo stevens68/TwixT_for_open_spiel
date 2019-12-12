@@ -45,12 +45,7 @@ enum Result {
   RESULT_COUNT
 };
 
-// player
-enum Player {
-	PLAYER_RED,
-	PLAYER_BLUE,
-	PLAYER_COUNT
-};
+
 
 // colors
 enum Color {
@@ -69,14 +64,14 @@ enum Border {
 
 // eight directions of links from 0 to 7
 enum Compass {
-  NNE,  // North-North-East, 2 up, 1 right
-  ENE,  // East-North-East,  1 up, 2 right
+  NNE,  // North-North-East, 2 up,   1 right
+  ENE,  // East-North-East,  1 up,   2 right
   ESE,  // East-South-East,  1 down, 2 right
   SSE,  // South-South-East, 2 down, 1 right
   SSW,  // South-South-West, 2 down, 1 left
   WSW,  // West-South-West,  1 down, 2 left
-  WNW,  // West-North-West,  1 up, 2 left
-  NNW,   // North-North-West, 2 up, 1 left
+  WNW,  // West-North-West,  1 up,   2 left
+  NNW,  // North-North-West, 2 up,   1 left
   COMPASS_COUNT
 };
 
@@ -95,35 +90,61 @@ class Board {
 		int mVirtualSize;
 		bool mAnsiColorOutput;
 		std::vector<Action> mLegalActions[PLAYER_COUNT];
+		int mLegalActionIndex[PLAYER_COUNT][kMaxBoardSize*kMaxBoardSize];
 		std::vector<double> mNormalizedVector;
 
 
-		void setSize(int);
-		int getSize() const;
+		void setSize(int size) {	mSize = size; };
+		int getSize() const { return mSize; };
 
-		void setVirtualSize(int);
-		int getVirtualSize() const;
+		void setVirtualSize(int virtualSize) { mVirtualSize = virtualSize; };
+		int getVirtualSize() const { return mVirtualSize; };
 
-		bool getAnsiColorOutput() const;
-		void setAnsiColorOutput(bool);
+		bool getAnsiColorOutput() const { return mAnsiColorOutput; };
+		void setAnsiColorOutput (bool ansiColorOutput) { mAnsiColorOutput = ansiColorOutput; };
 
-		void setResult(int);
+		void setResult(int result) { mResult = result; }
 
-		bool getSwapped() const;
-		void setSwapped(bool);
+		bool getSwapped() const { return mSwapped; };
+		void setSwapped(bool swapped) {	mSwapped = swapped; };
 
-		Action getMoveOne() const;
-		void setMoveOne(Action);
+		Action getMoveOne() const { return mMoveOne; };
+		void setMoveOne(Action action) { mMoveOne = action; };
 
-		void incMoveCounter();
+		void incMoveCounter() {	mMoveCounter++; };
+
+
+		bool isInPegSet(int player, enum Border border, Coordinates c) const {
+			return mLinkedToBorder[player][border][c.second * getVirtualSize() + c.first];
+		};
+		void addToPegSet(int player, enum Border border, Coordinates c) {
+			mLinkedToBorder[player][border][c.second * getVirtualSize() + c.first] = true;
+		};
+
+		const Cell* getConstCell(Coordinates c) const { return  &(mCell[c.first][c.second]); };
+		Cell* getCell(Coordinates c) { return  &(mCell[c.first][c.second]); };
+
+		bool hasLegalActions(int player) const { return mLegalActions[player].size() > 0; };
+		/*
+		void removeLegalAction(int player, Action action) {
+			std::vector<Action> *la = &mLegalActions[player];
+			std::vector<Action>::iterator it = find(la->begin(), la->end(), action);
+		    if (it != la->end()) la->erase(it);
+		};
+		*/
+		void removeLegalAction(int player, Action action) {
+			int pos = mLegalActionIndex[player][action];
+			if (pos >= 0) {
+				std::vector<Action> *la = &mLegalActions[player];
+				int last = la->back();
+				(*la)[pos] = last;
+				mLegalActionIndex[player][last] = pos;
+				la->pop_back();
+			}
+		};
+
 
 		void setBlockers(Coordinates, LinkDescriptor *);
-
-		bool isInPegSet(int, enum Border, Coordinates) const;
-		void addToPegSet(int, enum Border, Coordinates);
-
-		const Cell* getConstCell(Coordinates) const;
-		Cell* getCell(Coordinates);
 
 		void updateResult(int, Coordinates);
 
@@ -131,8 +152,6 @@ class Board {
 		void initializePegs();
 		void initializeLegalActions();
 
-		bool hasLegalActions(int) const;
-		void removeLegalAction(int, Action);
 
 		void addBinaryPlane(int, std::vector<double> *) const;
 		void addLinkPlane(int, int, std::vector<double> *) const;
@@ -149,20 +168,18 @@ class Board {
 		void appendPegRow(std::string *, Coordinates) const;
 		void appendAfterRow(std::string *, Coordinates) const;
 
-
 	public:
-		~Board();
-		Board();
+		~Board() {};
+		Board() {};
 		Board(int, bool);
 
 		std::string actionToString(int, Action) const;
 		std::string toString() const;
-		int getResult() const;
-		int getMoveCounter() const;
+		int getResult() const {	return mResult; };
+		int getMoveCounter() const { return mMoveCounter; };
 		void createNormalizedVector(int, std::vector<double> *) const;
-		std::vector<Action> getLegalActions(int) const;
+		std::vector<Action> getLegalActions(int player) const { return mLegalActions[player]; };
 		void applyAction(int, Action);
-
 };
 
 

@@ -20,25 +20,56 @@ class TwixTState: public State {
 		TwixTState& operator=(const TwixTState&) = default;
 
 		int CurrentPlayer() const override { return mCurrentPlayer; };
-		std::string ActionToString(int player, Action move) const override;
+		std::string ActionToString(int player, Action move) const override {
+			return mBoard.actionToString(player, move);;
+		}
 
-		std::string ToString() const override;
-		bool IsTerminal() const override;
-		std::vector<double> Returns() const override;
+		std::string ToString() const override { return mBoard.toString(); };
+		bool IsTerminal() const override {
+			int result = mBoard.getResult();
+			return (result == Result::RED_WON || result == Result::BLUE_WON || result == Result::DRAW);
+		};
 
-		std::string InformationStateString(open_spiel::Player player) const override;
-		void InformationStateTensor(int, std::vector<double> *) const override;
+		std::vector<double> Returns() const override {
+			double reward;
+			if (mBoard.getResult() == Result::OPEN || mBoard.getResult() == Result::DRAW) { return {0.0, 0.0}; }
+			else {
+				reward = pow(mDiscount, mBoard.getMoveCounter());
+				if (mBoard.getResult() == Result::RED_WON) { return {reward, -reward}; }
+				else { return {-reward, reward}; }
+			}
+		};
 
-		std::string ObservationString(int player) const override;
-		void ObservationTensor (int,	std::vector<double> *) const override;
+		std::string InformationStateString(open_spiel::Player player) const override { return HistoryString(); };
+		void InformationStateTensor(int player, std::vector<double> *values) const override {
+			mBoard.createNormalizedVector(player, values);
+		};
 
-		std::unique_ptr<State> Clone() const override;
+		std::string ObservationString(int player) const override {
+			SpielFatalError("ObservationString is not implemented.");
+			return "";
+		};
+
+		void ObservationTensor (int player,	std::vector<double> *values) const override {
+			SpielFatalError("ObservationTensor is not implemented.");
+		};
+
+		std::unique_ptr<State> Clone() const override {
+			return std::unique_ptr < State > (new TwixTState(*this));
+		};
 
 		void UndoAction(int, Action) override {};
-		std::vector<Action> LegalActions() const override;
+
+		std::vector<Action> LegalActions() const override {
+			return mBoard.getLegalActions(mCurrentPlayer);
+		};
 
 	protected:
-		void DoApplyAction(Action move) override;
+		void DoApplyAction(Action move) override {
+			mBoard.applyAction(mCurrentPlayer, move);
+			if (mBoard.getResult() == Result::OPEN) { mCurrentPlayer = 1 - mCurrentPlayer; }
+			else { mCurrentPlayer = kTerminalPlayerId; }
+		};
 
 	private:
 		int mCurrentPlayer = PLAYER_RED;         // Player zero goes first
@@ -52,42 +83,33 @@ class TwixTGame: public Game {
 
 	public:
 		explicit TwixTGame(const GameParameters &params);
-		std::unique_ptr<State> NewInitialState() const override {
+		inline std::unique_ptr<State> NewInitialState() const override {
 			return std::unique_ptr<State>(new TwixTState(shared_from_this()));
 		}
 
-		int NumDistinctActions() const override { return kMaxBoardSize*kMaxBoardSize; };
-		int NumPlayers() const override { return PLAYER_COUNT; };
-		double MinUtility() const override { return -1; };
-		double UtilitySum() const override { return 0; };
-		double MaxUtility() const override { return 1; };
+		inline int NumDistinctActions() const override { return kMaxBoardSize*kMaxBoardSize; };
+		inline int NumPlayers() const override { return PLAYER_COUNT; };
+		inline double MinUtility() const override { return -1; };
+		inline double UtilitySum() const override { return 0; };
+		inline double MaxUtility() const override { return 1; };
 
-		std::shared_ptr<const Game> Clone() const override {
+		inline std::shared_ptr<const Game> Clone() const override {
 			return std::shared_ptr<const Game>(new TwixTGame(*this));
 		}
 
-		std::vector<int> ObservationTensorShape() const override {
+		inline std::vector<int> ObservationTensorShape() const override {
 			return {};
 		}
 
-		std::vector<int> InformationStateTensorShape() const override {
+		inline std::vector<int> InformationStateTensorShape() const override {
 			static std::vector<int> shape{ kNumPlanes, mBoardSize, (mBoardSize-2) };
 			return shape;
 		}
 
-		int MaxGameLength() const { return kMaxBoardSize*kMaxBoardSize - 4 + 1; }
-
-		bool getAnsiColorOutput() const {
-			return mAnsiColorOutput;
-		}
-
-		int getBoardSize() const {
-			return mBoardSize;
-		}
-
-		double getDiscount() const {
-			return mDiscount;
-		}
+		inline int MaxGameLength() const { return kMaxBoardSize*kMaxBoardSize - 4 + 1; }
+		inline bool getAnsiColorOutput() const { return mAnsiColorOutput; }
+		inline int getBoardSize() const { return mBoardSize; }
+		inline double getDiscount() const { return mDiscount; }
 
 	private:
 		bool mAnsiColorOutput;

@@ -23,15 +23,54 @@ static pair<int, int> operator+(const pair<int, int> & l,const pair<int, int> & 
 
 
 // helper functions
-string coordsToString(Coordinates, int);
+inline string coordsToString(Coordinates, int);
 bool isOnBorderline(int, Coordinates, int);
 bool isOnMargin(Coordinates, int);
-//int coordsToAction(Coordinates, int);
 
-int getOppDir(int);
-int getLinkCode(Coordinates, int, int);
 string linkCodeToString(int, int);
-Coordinates getNeighbour(Coordinates, Coordinates);
+
+// helper ****************************************
+
+inline int getOppDir(int dir) {
+	return (dir + COMPASS_COUNT / 2) % COMPASS_COUNT;
+}
+
+inline int getLinkCode(Coordinates c, int dir, int boardSize) {
+	return -  (10 * ((c.second-kMargin) * boardSize + (c.first-kMargin)) + dir);
+}
+
+inline Coordinates getNeighbour(Coordinates c, Coordinates offset) {
+	return c + offset;
+}
+
+inline std::string coordsToString(Coordinates c, int boardSize) {
+	string s;
+	s = char(int('A') + (c.first - kMargin)) + to_string(boardSize + kMargin - c.second);
+	return s;
+}
+
+// *************************** helper
+
+
+bool isOnBorderline(int player, Coordinates c, int boardSize) {
+
+	if (player == PLAYER_RED) {
+		return ((c.second == kMargin || c.second == kMargin + boardSize - 1)
+				&& (c.first > kMargin && c.first < kMargin + boardSize - 1));
+	} else {
+		return ((c.first == kMargin || c.first == kMargin + boardSize - 1)
+				&& (c.second > kMargin && c.second < kMargin + boardSize - 1));
+	}
+}
+
+bool isOnMargin(Coordinates c, int boardSize) {
+
+	return (c.second < kMargin || c.second > kMargin + boardSize - 1 ||
+			c.first  < kMargin || c.first >  kMargin + boardSize - 1 ||
+			// corner case
+		   ((c.first  == kMargin || c.first  == kMargin + boardSize - 1) &&
+		    (c.second == kMargin || c.second == kMargin + boardSize - 1)));
+}
 
 
 
@@ -180,12 +219,16 @@ static vector<LinkDescriptor> kLinkDescriptorTable
 };
 
 
+string linkCodeToString(int linkCode, int boardSize) {
 
+	int dir = -linkCode % 10;
+	Coordinates c = { (-linkCode/10) % boardSize + kMargin, (-linkCode/10) / boardSize + kMargin };
 
-Board::~Board() {
-}
+	LinkDescriptor *ld = &kLinkDescriptorTable[dir];
+	Coordinates cd = kLinkDescriptorTable[dir].offsets;
 
-Board::Board() {
+	return coordsToString(c, boardSize) + "-" + coordsToString(c + cd, boardSize);
+
 }
 
 
@@ -202,7 +245,6 @@ Board::Board(int size, bool ansiColorOutput) {
 void Board::initialize() {
 
 	initializePegs();
-
 	initializeLegalActions();
 
 }
@@ -233,31 +275,6 @@ void Board::updateResult(int player, Coordinates c) {
 }
 
 
-void Board::setSize(int size) {
-	mSize = size;
-}
-
-int Board::getSize() const {
-	return mSize;
-}
-
-void Board::setVirtualSize(int virtualSize) {
-	mVirtualSize = virtualSize;
-}
-
-int Board::getVirtualSize() const {
-	return mVirtualSize;
-}
-
-bool Board::getAnsiColorOutput() const {
-	return mAnsiColorOutput;
-}
-
-void Board::setAnsiColorOutput(bool ansiColorOutput) {
-	mAnsiColorOutput = ansiColorOutput;
-}
-
-
 void Board::setBlockers(Coordinates c, LinkDescriptor *ld) {
 
 	for (auto &&entry : ld->blockingLinks) {
@@ -274,25 +291,6 @@ void Board::setBlockers(Coordinates c, LinkDescriptor *ld) {
 	}
 
 }
-
-
-bool Board::isInPegSet(int player, enum Border border, Coordinates c) const {
-	return mLinkedToBorder[player][border][c.second * getVirtualSize() + c.first];
-}
-
-
-void Board::addToPegSet(int player, enum Border border, Coordinates c) {
-	mLinkedToBorder[player][border][c.second * getVirtualSize() + c.first] = true;
-}
-
-Cell* Board::getCell(Coordinates c) {
-	return  &(mCell[c.first][c.second]);
-}
-
-const Cell* Board::getConstCell(Coordinates c)  const {
-	return  &(mCell[c.first][c.second]);
-}
-
 
 void Board::initializePegs() {
 
@@ -328,6 +326,24 @@ void Board::initializePegs() {
 		}
 	}
 
+	// flag impossible links as blocked links
+	for (int x = kMargin; x < getSize()+kMargin; x++) {
+		for (int y = kMargin; y < getSize()+kMargin; y++) {
+			for (int dir = 0; dir < COMPASS_COUNT; dir++) {
+				LinkDescriptor *ld = &(kLinkDescriptorTable[dir]);
+				Coordinates c = { x, y };
+				Coordinates tc = c + ld->offsets;
+				if (getCell(tc)->getPeg() != Color::EMPTY) {
+					getCell(c)->setBlocked(dir);
+				} else if (isOnBorderline(PLAYER_RED, tc, getSize())){
+					getCell(c)->setBlocked(PLAYER_RED, dir);
+				} else if (isOnBorderline(PLAYER_BLUE, tc, getSize())){
+					getCell(c)->setBlocked(PLAYER_BLUE, dir);
+				}
+			}
+		}
+	}
+
 }
 
 void Board::initializeLegalActions() {
@@ -339,33 +355,19 @@ void Board::initializeLegalActions() {
 		la->clear();
 		la->reserve(getSize() * getSize());
 
-		for (int y = 0; y < getVirtualSize(); y++) {
-			for (int x = 0; x < getVirtualSize(); x++) {
+		for (int y = kMargin; y < getSize()+kMargin; y++) {
+			for (int x = kMargin; x < getSize()+kMargin; x++) {
+				int action = (y-kMargin) * getSize() + (x-kMargin);
 				if (!isOnBorderline(1 - player, {x, y}, getSize())
 						&& !isOnMargin({x, y}, getSize())) {
-					int action = (y-kMargin) * getSize() + (x-kMargin);
+					mLegalActionIndex[player][action] = la->size();
 					la->push_back(action);
+				} else {
+					mLegalActionIndex[player][action] = -1;
 				}
 			}
 		}
 	}
-}
-
-bool Board::hasLegalActions(int player) const {
-	return mLegalActions[player].size() > 0;
-}
-
-vector<Action> Board::getLegalActions(int player) const {
-	return mLegalActions[player];
-}
-
-void Board::removeLegalAction(int player, Action action) {
-
-	vector<Action> *la = &mLegalActions[player];
-	vector<Action>::iterator it;
-    it = find(la->begin(), la->end(), action);
-    if (it != la->end()) la->erase(it);
-
 }
 
 string Board::toString() const {
@@ -391,7 +393,7 @@ string Board::toString() const {
 		s.append("\n");
 
 		// print peg row
-		y - kMargin + 1 < 10 ? s.append("  ") : s.append(" ");
+		getSize() + kMargin - y < 10 ? s.append("  ") : s.append(" ");
 		appendColorString(&s, kAnsiBlue, to_string(getSize() + kMargin - y) + " ");
 		for (int x = 0 + kMargin; x < getSize() + kMargin; x++) {
 			appendPegRow(&s, {x, y});
@@ -445,7 +447,6 @@ string Board::toString() const {
 string Board::actionToString(int player, Action move) const {
 
 	string s = "";
-
 	s += char(int('A') + move % getSize());
 	s.append(to_string(getSize() - move / getSize()));
 	return s;
@@ -539,39 +540,6 @@ void Board::addPegPlane(int player, std::vector<double> *values) const {
 
 }
 
-
-void Board::setMoveOne(Action action) {
-	mMoveOne = action;
-}
-
-Action Board::getMoveOne() const {
-	return mMoveOne;
-};
-
-
-void Board::incMoveCounter() {
-	mMoveCounter++;
-}
-
-int Board::getMoveCounter() const {
-	return mMoveCounter;
-}
-
-int Board::getResult() const {
-	return mResult;
-}
-
-void Board::setResult(int result) {
-	mResult = result;
-}
-
-void Board::setSwapped(bool swapped) {
-	mSwapped = swapped;
-}
-
-bool Board::getSwapped() const {
-	return mSwapped;
-}
 
 void Board::appendLinkChar(string *s, Coordinates c, enum Compass dir,
 		string linkChar) const {
@@ -757,33 +725,33 @@ void Board::setSurroundingLinks(int player, Coordinates c) {
 	bool linkedToEnd = false;
 
 	for (int dir = 0; dir < COMPASS_COUNT; dir++) {
-		LinkDescriptor *ld = &(kLinkDescriptorTable[dir]);
-		Coordinates cd = ld->offsets;
+		if (! getCell(c)->isBlocked(player, dir) ) {
+			// link is not blocked
+			LinkDescriptor *ld = &(kLinkDescriptorTable[dir]);
+			Coordinates cd = ld->offsets;
+			if (getCell(c + cd)->getPeg() == getCell(c)->getPeg()) {
+				// target peg has same color and link is not blocked
+				// set link from/to this peg
+				getCell(c)->setLink(dir);
+				getCell(c + cd)->setLink(getOppDir(dir));
 
-		if (getCell(c + cd)->getPeg() == getCell(c)->getPeg() &&
-		    ! getCell(c)->isBlocked(dir) ) {
-			// target peg has same color and link is not blocked
-			// set link from/to this peg
-			getCell(c)->setLink(dir);
-			getCell(c + cd)->setLink(getOppDir(dir));
+				setBlockers(c, ld);
 
-			// set blockers and check if we have
-			setBlockers(c, ld);
+				// check if peg we link to is in a pegset (START / END)
+				if (isInPegSet(player, Border::START, c + cd)) {
+					addToPegSet(player, Border::START, c);
+					linkedToStart = true;
+				}
+				if (isInPegSet(player, Border::END, c + cd)) {
+					addToPegSet(player, Border::END, c);
+					linkedToEnd = true;
+				}
+				if (! isInPegSet(player, Border::START, c + cd) &&
+					! isInPegSet(player, Border::END, c + cd)) {
+					linkedToNeutral = true;
+				}
 
-			// check if peg we link to is in a pegset (START / END)
-			if (isInPegSet(player, Border::START, c + cd)) {
-				addToPegSet(player, Border::START, c);
-				linkedToStart = true;
 			}
-			if (isInPegSet(player, Border::END, c + cd)) {
-				addToPegSet(player, Border::END, c);
-				linkedToEnd = true;
-			}
-			if (! isInPegSet(player, Border::START, c + cd) &&
-				! isInPegSet(player, Border::END, c + cd)) {
-				linkedToNeutral = true;
-			}
-
 		}
 	}
 
@@ -819,69 +787,6 @@ void Board::exploreLocalGraph(int player, Coordinates c, enum Border border) {
 	}
 }
 
-// *************************** helper
-
-/*
-int coordsToAction(Coordinates c, int boardSize) {
-	return (c.second - kMargin) * boardSize + (c.first - kMargin);
-}
-*/
-
-std::string coordsToString(Coordinates c, int boardSize) {
-	string s;
-	s = char(int('A') + (c.first - kMargin)) + to_string(boardSize + kMargin - c.second);
-	return s;
-}
-
-bool isOnBorderline(int player, Coordinates c, int boardSize) {
-
-	if (player == PLAYER_RED) {
-		return ((c.second == kMargin || c.second == kMargin + boardSize - 1)
-				&& (c.first > kMargin && c.first < kMargin + boardSize - 1));
-	} else {
-		return ((c.first == kMargin || c.first == kMargin + boardSize - 1)
-				&& (c.second > kMargin && c.second < kMargin + boardSize - 1));
-	}
-}
-
-bool isOnMargin(Coordinates c, int boardSize) {
-
-	return (c.second < kMargin || c.second > kMargin + boardSize - 1 ||
-			c.first  < kMargin || c.first >  kMargin + boardSize - 1 ||
-			// corner case
-		   ((c.first  == kMargin || c.first  == kMargin + boardSize - 1) &&
-		    (c.second == kMargin || c.second == kMargin + boardSize - 1)));
-}
-
-void addToPegSet(PegSet *p, Coordinates c) {
-	(*p)[c.second * kMaxVirtualBoardSize + c.first] = true;
-}
-
-int getOppDir(int dir) {
-	return (dir + COMPASS_COUNT / 2) % COMPASS_COUNT;
-}
-
-int getLinkCode(Coordinates c, int dir, int boardSize) {
-	return -  (10 * ((c.second-kMargin) * boardSize + (c.first-kMargin)) + dir);
-}
-
-string linkCodeToString(int linkCode, int boardSize) {
-
-	int dir = -linkCode % 10;
-	Coordinates c = { (-linkCode/10) % boardSize + kMargin, (-linkCode/10) / boardSize + kMargin };
-
-	LinkDescriptor *ld = &kLinkDescriptorTable[dir];
-	Coordinates cd = kLinkDescriptorTable[dir].offsets;
-
-	return coordsToString(c, boardSize) + "-" + coordsToString(c + cd, boardSize);
-
-}
-
-
-
-Coordinates getNeighbour(Coordinates c, Coordinates offset) {
-	return c + offset;
-}
 
 
 }  // namespace twixt
