@@ -64,6 +64,9 @@ class TwixTState: public State {
 			return mBoard.getLegalActions(mCurrentPlayer);
 		};
 
+		bool coordOnBorderline(int, Coordinates) const;
+		bool coordOverBoard(Coordinates) const;
+
 	protected:
 		void DoApplyAction(Action move) override {
 			mBoard.applyAction(mCurrentPlayer, move);
@@ -83,33 +86,33 @@ class TwixTGame: public Game {
 
 	public:
 		explicit TwixTGame(const GameParameters &params);
-		inline std::unique_ptr<State> NewInitialState() const override {
+		std::unique_ptr<State> NewInitialState() const override {
 			return std::unique_ptr<State>(new TwixTState(shared_from_this()));
 		}
 
-		inline int NumDistinctActions() const override { return kMaxBoardSize*kMaxBoardSize; };
-		inline int NumPlayers() const override { return PLAYER_COUNT; };
-		inline double MinUtility() const override { return -1; };
-		inline double UtilitySum() const override { return 0; };
-		inline double MaxUtility() const override { return 1; };
+		int NumDistinctActions() const override { return kMaxBoardSize*kMaxBoardSize; };
+		int NumPlayers() const override { return PLAYER_COUNT; };
+		double MinUtility() const override { return -1; };
+		double UtilitySum() const override { return 0; };
+		double MaxUtility() const override { return 1; };
 
-		inline std::shared_ptr<const Game> Clone() const override {
+		std::shared_ptr<const Game> Clone() const override {
 			return std::shared_ptr<const Game>(new TwixTGame(*this));
 		}
 
-		inline std::vector<int> ObservationTensorShape() const override {
+		std::vector<int> ObservationTensorShape() const override {
 			return {};
 		}
 
-		inline std::vector<int> InformationStateTensorShape() const override {
+		std::vector<int> InformationStateTensorShape() const override {
 			static std::vector<int> shape{ kNumPlanes, mBoardSize, (mBoardSize-2) };
 			return shape;
 		}
 
-		inline int MaxGameLength() const { return kMaxBoardSize*kMaxBoardSize - 4 + 1; }
-		inline bool getAnsiColorOutput() const { return mAnsiColorOutput; }
-		inline int getBoardSize() const { return mBoardSize; }
-		inline double getDiscount() const { return mDiscount; }
+		int MaxGameLength() const { return kMaxBoardSize*kMaxBoardSize - 4 + 1; }
+		bool getAnsiColorOutput() const { return mAnsiColorOutput; }
+		int getBoardSize() const { return mBoardSize; }
+		double getDiscount() const { return mDiscount; }
 
 	private:
 		bool mAnsiColorOutput;

@@ -143,7 +143,6 @@ class Board {
 			}
 		};
 
-
 		void setBlockers(Coordinates, LinkDescriptor *);
 
 		void updateResult(int, Coordinates);
@@ -167,6 +166,8 @@ class Board {
 		void appendBeforeRow(std::string *, Coordinates) const;
 		void appendPegRow(std::string *, Coordinates) const;
 		void appendAfterRow(std::string *, Coordinates) const;
+		bool coordsOnBorderline(int, Coordinates) const;
+		bool coordsOffBoard(Coordinates) const;
 
 	public:
 		~Board() {};

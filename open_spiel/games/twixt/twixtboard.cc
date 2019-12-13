@@ -24,9 +24,6 @@ static pair<int, int> operator+(const pair<int, int> & l,const pair<int, int> & 
 
 // helper functions
 inline string coordsToString(Coordinates, int);
-bool isOnBorderline(int, Coordinates, int);
-bool isOnMargin(Coordinates, int);
-
 string linkCodeToString(int, int);
 
 // helper ****************************************
@@ -48,30 +45,6 @@ inline std::string coordsToString(Coordinates c, int boardSize) {
 	s = char(int('A') + (c.first - kMargin)) + to_string(boardSize + kMargin - c.second);
 	return s;
 }
-
-// *************************** helper
-
-
-bool isOnBorderline(int player, Coordinates c, int boardSize) {
-
-	if (player == PLAYER_RED) {
-		return ((c.second == kMargin || c.second == kMargin + boardSize - 1)
-				&& (c.first > kMargin && c.first < kMargin + boardSize - 1));
-	} else {
-		return ((c.first == kMargin || c.first == kMargin + boardSize - 1)
-				&& (c.second > kMargin && c.second < kMargin + boardSize - 1));
-	}
-}
-
-bool isOnMargin(Coordinates c, int boardSize) {
-
-	return (c.second < kMargin || c.second > kMargin + boardSize - 1 ||
-			c.first  < kMargin || c.first >  kMargin + boardSize - 1 ||
-			// corner case
-		   ((c.first  == kMargin || c.first  == kMargin + boardSize - 1) &&
-		    (c.second == kMargin || c.second == kMargin + boardSize - 1)));
-}
-
 
 
 // ***********************************************
@@ -318,7 +291,7 @@ void Board::initializePegs() {
 			getCell(c)->clearLinks();
 			getCell(c)->clearBlockedLinks();
 			// set pegs to EMPTY, PLAYER_RED or PLAYER_BLUE depending on boardType and position
-			if (isOnMargin(c, getSize())) {
+			if (coordsOffBoard(c)) {
 				getCell(c)->setPeg(OVERBOARD);
 			} else { // regular board
 				getCell(c)->setPeg(EMPTY);
@@ -335,9 +308,9 @@ void Board::initializePegs() {
 				Coordinates tc = c + ld->offsets;
 				if (getCell(tc)->getPeg() != Color::EMPTY) {
 					getCell(c)->setBlocked(dir);
-				} else if (isOnBorderline(PLAYER_RED, tc, getSize())){
+				} else if (coordsOnBorderline(PLAYER_RED, tc)){
 					getCell(c)->setBlocked(PLAYER_RED, dir);
-				} else if (isOnBorderline(PLAYER_BLUE, tc, getSize())){
+				} else if (coordsOnBorderline(PLAYER_BLUE, tc)){
 					getCell(c)->setBlocked(PLAYER_BLUE, dir);
 				}
 			}
@@ -358,8 +331,8 @@ void Board::initializeLegalActions() {
 		for (int y = kMargin; y < getSize()+kMargin; y++) {
 			for (int x = kMargin; x < getSize()+kMargin; x++) {
 				int action = (y-kMargin) * getSize() + (x-kMargin);
-				if (!isOnBorderline(1 - player, {x, y}, getSize())
-						&& !isOnMargin({x, y}, getSize())) {
+				if ( ! coordsOnBorderline(1 - player, {x, y})
+						&& ! coordsOffBoard({x, y})) {
 					mLegalActionIndex[player][action] = la->size();
 					la->push_back(action);
 				} else {
@@ -540,7 +513,6 @@ void Board::addPegPlane(int player, std::vector<double> *values) const {
 
 }
 
-
 void Board::appendLinkChar(string *s, Coordinates c, enum Compass dir,
 		string linkChar) const {
 	if (getConstCell(c)->hasLink(dir)) {
@@ -568,7 +540,7 @@ void Board::appendPegChar(string *s, Coordinates c) const {
 	} else if (getConstCell(c)->getPeg() == PLAYER_BLUE) {
 		// O
 		appendColorString(s, kAnsiBlue, "O");
-	} else if (isOnMargin(c, getSize())) {
+	} else if (coordsOffBoard(c)) {
 		// corner
 		s->append(" ");
 	} else if (c.first - kMargin == 0 || c.first - kMargin == getSize() - 1) {
@@ -787,6 +759,26 @@ void Board::exploreLocalGraph(int player, Coordinates c, enum Border border) {
 	}
 }
 
+
+bool Board::coordsOnBorderline(int player, Coordinates c) const {
+
+	if (player == PLAYER_RED) {
+		return ((c.second == kMargin || c.second == kMargin + getSize() - 1)
+				&& (c.first > kMargin && c.first < kMargin + getSize() - 1));
+	} else {
+		return ((c.first == kMargin || c.first == kMargin + getSize() - 1)
+				&& (c.second > kMargin && c.second < kMargin + getSize() - 1));
+	}
+}
+
+bool Board::coordsOffBoard(Coordinates c) const {
+
+	return (c.second < kMargin || c.second > kMargin + getSize() - 1 ||
+			c.first  < kMargin || c.first >  kMargin + getSize() - 1 ||
+			// corner case
+		   ((c.first  == kMargin || c.first  == kMargin + getSize() - 1) &&
+		    (c.second == kMargin || c.second == kMargin + getSize() - 1)));
+}
 
 
 }  // namespace twixt
