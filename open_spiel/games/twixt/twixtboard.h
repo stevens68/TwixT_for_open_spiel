@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <string>
+#include <map>
 
 namespace open_spiel {
 namespace twixt {
@@ -15,9 +16,6 @@ const int kMinBoardSize =5 ;
 const int kMaxBoardSize = 24;
 const int kDefaultBoardSize = 8;
 
-const int kMargin = 2;
-const int kMaxVirtualBoardSize = kMaxBoardSize + 2 * kMargin;
-
 const int kDefaultAnsiColorOutput=true;
 
 const double kMinDiscount=0.0;
@@ -25,12 +23,10 @@ const double kMaxDiscount=1.0;
 const double kDefaultDiscount=kMaxDiscount;
 
 
-typedef std::pair<int, int> Coordinates;
-
 // 8 link descriptors store the properties of a link direction
 struct {
-	Coordinates offsets;      // offset of the target peg, e.g. (2, -1) for ENE
-	std::vector<std::pair<Coordinates, int>> blockingLinks;
+	Tuple offsets;      // offset of the target peg, e.g. (2, -1) for ENE
+	std::vector<std::pair<Tuple, int>> blockingLinks;
 } typedef LinkDescriptor;
 
 
@@ -45,9 +41,6 @@ enum Result {
   RESULT_COUNT
 };
 
-
-
-// colors
 enum Color {
 	COLOR_RED,
 	COLOR_BLUE,
@@ -56,26 +49,20 @@ enum Color {
 	COLOR_COUNT
 };
 
-enum Border {
-	START,
-	END,
-	BORDER_COUNT
+static std::map<Link, std::vector<Link>> blockerMap;
+
+inline const std::vector<Link>* getBlockers(Link link)  {
+	return &(blockerMap[link]);
 };
 
-// eight directions of links from 0 to 7
-enum Compass {
-  NNE,  // North-North-East, 2 up,   1 right
-  ENE,  // East-North-East,  1 up,   2 right
-  ESE,  // East-South-East,  1 down, 2 right
-  SSE,  // South-South-East, 2 down, 1 right
-  SSW,  // South-South-West, 2 down, 1 left
-  WSW,  // West-South-West,  1 down, 2 left
-  WNW,  // West-North-West,  1 up,   2 left
-  NNW,  // North-North-West, 2 up,   1 left
-  COMPASS_COUNT
+inline void pushBlocker(Link link, Link blockedLink ) {
+	blockerMap[link].push_back(blockedLink);
 };
 
-typedef bool PegSet[kMaxVirtualBoardSize*kMaxVirtualBoardSize];
+inline void clearBlocker() {
+	blockerMap.clear();
+};
+
 
 class Board {
 
@@ -85,20 +72,14 @@ class Board {
 		int mMoveOne;
 		int mResult = Result::OPEN;
 		std::vector<std::vector<Cell>> mCell;
-		PegSet mLinkedToBorder[PLAYER_COUNT][BORDER_COUNT];
 		int mSize;
-		int mVirtualSize;
 		bool mAnsiColorOutput;
 		std::vector<Action> mLegalActions[PLAYER_COUNT];
 		int mLegalActionIndex[PLAYER_COUNT][kMaxBoardSize*kMaxBoardSize];
-		std::vector<double> mNormalizedVector;
+		std::vector<double> mTensor;
 
-
-		void setSize(int size) {	mSize = size; };
+		void setSize(int size) { mSize = size; };
 		int getSize() const { return mSize; };
-
-		void setVirtualSize(int virtualSize) { mVirtualSize = virtualSize; };
-		int getVirtualSize() const { return mVirtualSize; };
 
 		bool getAnsiColorOutput() const { return mAnsiColorOutput; };
 		void setAnsiColorOutput (bool ansiColorOutput) { mAnsiColorOutput = ansiColorOutput; };
@@ -113,25 +94,10 @@ class Board {
 
 		void incMoveCounter() {	mMoveCounter++; };
 
-
-		bool isInPegSet(int player, enum Border border, Coordinates c) const {
-			return mLinkedToBorder[player][border][c.second * getVirtualSize() + c.first];
-		};
-		void addToPegSet(int player, enum Border border, Coordinates c) {
-			mLinkedToBorder[player][border][c.second * getVirtualSize() + c.first] = true;
-		};
-
-		const Cell* getConstCell(Coordinates c) const { return  &(mCell[c.first][c.second]); };
-		Cell* getCell(Coordinates c) { return  &(mCell[c.first][c.second]); };
+		const Cell* getConstCell(Tuple c) const { return  &(mCell[c.first][c.second]); };
+		Cell* getCell(Tuple c) { return  &(mCell[c.first][c.second]); };
 
 		bool hasLegalActions(int player) const { return mLegalActions[player].size() > 0; };
-		/*
-		void removeLegalAction(int player, Action action) {
-			std::vector<Action> *la = &mLegalActions[player];
-			std::vector<Action>::iterator it = find(la->begin(), la->end(), action);
-		    if (it != la->end()) la->erase(it);
-		};
-		*/
 		void removeLegalAction(int player, Action action) {
 			int pos = mLegalActionIndex[player][action];
 			if (pos >= 0) {
@@ -143,31 +109,32 @@ class Board {
 			}
 		};
 
-		void setBlockers(Coordinates, LinkDescriptor *);
+		void updateResult(int, Tuple);
+		void undoFirstMove(Tuple c);
 
-		void updateResult(int, Coordinates);
+		void initializeCells(bool);
+		void initializeCandidates(Tuple, Cell *, bool);
+		void initializeBlockerMap(Tuple, int, LinkDescriptor *);
 
-		void initialize();
-		void initializePegs();
 		void initializeLegalActions();
-
 
 		void addBinaryPlane(int, std::vector<double> *) const;
 		void addLinkPlane(int, int, std::vector<double> *) const;
 		void addPegPlane(int, std::vector<double> *) const;
 
-		void setSurroundingLinks(int, Coordinates);
-		void exploreLocalGraph(int, Coordinates , enum Border);
+		void setPegAndLinks(int, Tuple);
+		void exploreLocalGraph(int, Cell * , enum Border);
 
-		void appendLinkChar(std::string *, Coordinates, enum Compass, std::string) const;
+		void appendLinkChar(std::string *, Tuple, enum Compass, std::string) const;
 		void appendColorString(std::string *, std::string, std::string) const;
-		void appendPegChar(std::string *, Coordinates ) const;
+		void appendPegChar(std::string *, Tuple ) const;
 
-		void appendBeforeRow(std::string *, Coordinates) const;
-		void appendPegRow(std::string *, Coordinates) const;
-		void appendAfterRow(std::string *, Coordinates) const;
-		bool coordsOnBorderline(int, Coordinates) const;
-		bool coordsOffBoard(Coordinates) const;
+		void appendBeforeRow(std::string *, Tuple) const;
+		void appendPegRow(std::string *, Tuple) const;
+		void appendAfterRow(std::string *, Tuple) const;
+
+		bool coordsOnBorder(int, Tuple) const;
+		bool coordsOffBoard(Tuple) const;
 
 	public:
 		~Board() {};
@@ -178,7 +145,7 @@ class Board {
 		std::string toString() const;
 		int getResult() const {	return mResult; };
 		int getMoveCounter() const { return mMoveCounter; };
-		void createNormalizedVector(int, std::vector<double> *) const;
+		void createTensor(int, std::vector<double> *) const;
 		std::vector<Action> getLegalActions(int player) const { return mLegalActions[player]; };
 		void applyAction(int, Action);
 };
@@ -189,57 +156,35 @@ class Board {
 // * the x-axis (cols) points from left to right,
 // * the y axis (rows) points from bottom to top
 // * moves/actions are labeled by col & row, e.g. C4, F4, D2, ...
-// * moves/actions are indexed by boardSize * row + col
-// * the virtual board has a margin of 2 rows/cols to avoid overboard checks
+// * coordinates to moves/actions: boardSize * y + x
 // * player1: 0, X, top/bottom;
 // * player2: 1, O, left/right;
-// * EMPTY = -1, OVERBOARD = -2
+// * EMPTY = -1
 //
-// example 8 x 8 board: red peg at C5 (col/row: [2,4], virtual [4,6]
-//                      red peg at D3 (col/row: [3,6], virtual [5,8]
-//                      blue peg at F5 (col/row: [5,4], virtual [7,6]
+// example 8 x 8 board: red peg at C5 (x/y: [0,2]
+//                      red peg at D3 (x/y: [1,4]
+//                      blue peg at F5 (x/y: [3,2]
 //
-//              A   B   C   D   E   F   G   H
-//
-//     -2  -2  -2  -2  -2  -2  -2  -2  -2  -2  -2  -2
-//
-//     -2  -2  -2  -2  -2  -2  -2  -2  -2  -2  -2  -2
-//              -------------------------
-// 1   -2  -2 |-1  -1  -1  -1  -1  -1  -1 |-1  -2  -2  <-- borderline of player 1 (X)
-//            |                           |
-// 2   -2  -2 |-1  -1  -1  -1  -1  -1  -1 |-1  -2  -2
-//            |                           |
-// 3   -2  -2 |-1  -1  -1   0  -1  -1  -1 |-1  -2  -2
-//            |                           |
-// 4   -2  -2 |-1  -1  -1  -1  -1  -1  -1 |-1  -2  -2
-//            |                           |
-// 5   -2  -2 |-1  -1   0  -1  -1   1  -1 |-1  -2  -2
-//            |                           |
-// 6   -2  -2 |-1  -1  -1  -1  -1  -1  -1 |-1  -2  -2
-//            |                           |
-// 7   -2  -2 |-1  -1  -1  -1  -1  -1  -1 |-1  -2  -2
-//            |                           |
-// 8   -2  -2 |-1  -1  -1  -1  -1  -1  -1 |-1  -2  -2  <-- borderline of player 1 (X)
-//              -------------------------
-//     -2  -2  -2  -2  -2  -2  -2  -2  -2  -2  -2  -2
-//
-//     -2  -2  -2  -2  -2  -2  -2  -2  -2  -2  -2  -2
-
-// links:
-// * for each cell we store an int with the bitmap of the 8 possible links
-// * the 8 link directions are indexed in clockwise order starting at NNE
-// * bit 2**idx is set, if link idx is set
-// blocked links:
-// * for each peg we also store an int with a bitmap of the blocked links
-// * i.e. that cannot be set in the future.
-
-// the blockingLinks vector is to check if an existing link prevents us from setting another link
-// we store existing links redundantly on the board, i.e. from both peg's perspective,
-
+//     A   B   C   D   E   F   G   H
+//    ------------------------------
+// 1 |-1  -1  -1  -1  -1  -1  -1  -1 |
+//   |                               |
+// 2 |-1  -1  -1  -1  -1  -1  -1  -1 |
+//   |                               |
+// 3 |-1  -1  -1   0  -1  -1  -1  -1 |
+//   |                               |
+// 4 |-1  -1  -1  -1  -1  -1  -1  -1 |
+//   |                               |
+// 5 |-1  -1   0  -1  -1   1  -1  -1 |
+//   |                               |
+// 6 |-1  -1  -1  -1  -1  -1  -1  -1 |
+//   |                               |
+// 7 |-1  -1  -1  -1  -1  -1  -1  -1 |
+//   |                               |
+// 8 |-1  -1  -1  -1  -1  -1  -1  -1 |
+//     ------------------------------
 
 }  // namespace twixt
 }  // namespace open_spiel
-
-
 
 #endif  // THIRD_PARTY_OPEN_SPIEL_GAMES_TWIXTBOARD_H_

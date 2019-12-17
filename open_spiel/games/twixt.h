@@ -4,6 +4,7 @@
 
 #include "open_spiel/spiel.h"
 #include "open_spiel/games/twixt/twixtboard.h"
+#include <iostream>
 
 // https://en.wikipedia.org/wiki/TwixT
 
@@ -42,7 +43,7 @@ class TwixTState: public State {
 
 		std::string InformationStateString(open_spiel::Player player) const override { return HistoryString(); };
 		void InformationStateTensor(int player, std::vector<double> *values) const override {
-			mBoard.createNormalizedVector(player, values);
+			mBoard.createTensor(player, values);
 		};
 
 		std::string ObservationString(int player) const override {
@@ -64,14 +65,15 @@ class TwixTState: public State {
 			return mBoard.getLegalActions(mCurrentPlayer);
 		};
 
-		bool coordOnBorderline(int, Coordinates) const;
-		bool coordOverBoard(Coordinates) const;
+		bool coordOnBorderline(int, Tuple) const;
+		bool coordOverBoard(Tuple) const;
 
 	protected:
 		void DoApplyAction(Action move) override {
 			mBoard.applyAction(mCurrentPlayer, move);
 			if (mBoard.getResult() == Result::OPEN) { mCurrentPlayer = 1 - mCurrentPlayer; }
 			else { mCurrentPlayer = kTerminalPlayerId; }
+
 		};
 
 	private:
