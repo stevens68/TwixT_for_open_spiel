@@ -15,7 +15,6 @@ enum Border {
 	BORDER_COUNT
 };
 
-
 enum Player {
 	PLAYER_RED,
 	PLAYER_BLUE,

@@ -30,12 +30,13 @@ inline std::string coordsToString(Tuple c) {
 	return "[" + std::to_string(c.first) + "," + std::to_string(c.second) + "]";
 }
 
+
 // ***********************************************
 
 // table of 8 link descriptors
 static vector<LinkDescriptor> kLinkDescriptorTable
 {
-	// NNE
+	// NNEdebug
 	{
 	   {1,  2},   // offset of target peg (2 up, 1 right)
 	   {           // blocking/blocked links
@@ -228,6 +229,7 @@ void Board::initializeCells(bool initBM) {
 
 	mCell.resize(getSize());
 	clearBlocker();
+	mBlockedLinks.clear();
 
 	// initialize board with color (empty or overboard)
 	for (int x = 0; x < getSize(); x++) {
@@ -375,7 +377,7 @@ string Board::toString() const {
 	return s;
 }
 
-string Board::actionToString(int player, Action move) const {
+string Board::actionToString(Action move) const {
 
 	string s = "";
 	s += char(int('A') + move % getSize());
@@ -598,6 +600,43 @@ void Board::undoFirstMove(Tuple c) {
 
 void Board::applyAction(int player, Action move) {
 
+	// debug >>>>>>>>>>>>>>
+	/*
+	if (mMoveCounter ==  0) move = stringToAction("D3");
+	if (mMoveCounter ==  1) move = stringToAction("A4");
+	if (mMoveCounter ==  2) move = stringToAction("C3");
+	if (mMoveCounter ==  3) move = stringToAction("E3");
+	if (mMoveCounter ==  4) move = stringToAction("C4");
+	if (mMoveCounter ==  5) move = stringToAction("F5");
+	if (mMoveCounter ==  6) move = stringToAction("B6");
+	if (mMoveCounter ==  7) move = stringToAction("E2");
+	if (mMoveCounter ==  8) move = stringToAction("C2");
+	if (mMoveCounter ==  9) move = stringToAction("B4");
+	if (mMoveCounter ==  10) move = stringToAction("E5");
+	if (mMoveCounter ==  11) move = stringToAction("D2");
+	if (mMoveCounter ==  12) move = stringToAction("C5");
+	if (mMoveCounter ==  13) move = stringToAction("F4");
+	if (mMoveCounter ==  14) move = stringToAction("B1");
+	if (mMoveCounter ==  15) move = stringToAction("E4");
+	if (mMoveCounter ==  16) move = stringToAction("B5");
+	if (mMoveCounter ==  17) move = stringToAction("A5");
+	if (mMoveCounter ==  18) move = stringToAction("D4");
+	if (mMoveCounter ==  19) move = stringToAction("F2");
+	if (mMoveCounter ==  20) move = stringToAction("E1");
+	if (mMoveCounter ==  21) move = stringToAction("");
+	if (mMoveCounter ==  22) move = stringToAction("");
+	if (mMoveCounter ==  23) move = stringToAction("");
+	if (mMoveCounter ==  24) move = stringToAction("");
+	if (mMoveCounter ==  25) move = stringToAction("");
+	if (mMoveCounter ==  26) move = stringToAction("");
+	if (mMoveCounter ==  27) move = stringToAction("");
+	if (mMoveCounter ==  28) move = stringToAction("");
+	if (mMoveCounter ==  29) move = stringToAction("");
+	cout << "DEBUG: " << actionToString(move) << endl;
+	*/
+	// <<<<<<<<<<<<< debug
+
+
 	Tuple c = { (int) move % getSize(), (int) move / getSize() };
 
 	if (getMoveCounter() == 1) {
@@ -655,6 +694,7 @@ void Board::setPegAndLinks(int player, Tuple c) {
 	pCell->setColor(player);
 
 	int dir=0;
+	bool newLinks = false;
 	for (int cand=1, dir=0; cand <= pCell->getCandidates(player) ; cand<<=1, dir++) {
 		if (pCell->isCandidate(player, cand)) {
 			Cell *pTargetCell = getCell(pCell->getNeighbor(dir));
@@ -666,48 +706,53 @@ void Board::setPegAndLinks(int player, Tuple c) {
 				pTargetCell->deleteCandidate(1-player, oppCand(cand));
 				//cout << "After:  " << to_string(pTargetCell->getCandidates(1-player)) << endl;
 
-
 			} else {
-				//cout << "**** about link to " << coordsToString(pCell->getNeighbor(dir)) << endl;
-				// set link
-				pCell->setLink(dir);
-				pTargetCell->setLink(oppDir(dir));
 
-				// set blockers
-				const vector<Link> *blockers = getBlockers((Link) {c, dir});
+				// check blockers before setting link
+				set<Link> *blockers = getBlockers((Link) {c, dir});
+				bool blocked = false;
 				for (auto &&bl : *blockers) {
-					//cout << "       blocking: "  << coordsToString(bl.first) << ": " << to_string(bl.second) << endl;
-					getCell(bl.first)->deleteCandidate(bl.second);
+					//cout << "       checking blocker:"  << coordsToString(bl.first) << ": " << to_string(bl.second) << endl;
+					if (getCell(bl.first)->hasLink(bl.second)) {
+						//cout << "             ...blocked!"  << endl;
+						blocked = true;
+						break;
+					}
 				}
 
-				// check if cell we link to is linked to START / END
-				if (pTargetCell->isLinkedToBorder(player, Border::START)) {
-					pCell->setLinkedToBorder(player, Border::START);
-					linkedToStart = true;
-				}
-				if (pTargetCell->isLinkedToBorder(player, Border::END)) {
-					pCell->setLinkedToBorder(player, Border::END);
-					linkedToEnd = true;
-				}
-				if (! pTargetCell->isLinkedToBorder(player, Border::START) &&
-					! pTargetCell->isLinkedToBorder(player, Border::END) ) {
-					linkedToNeutral = true;
-				}
-			}
-		}
-	}
+				if (! blocked) {
+					pCell->setLink(dir);
+					pTargetCell->setLink(oppDir(dir));
+					newLinks = true;
+
+					// check if cell we link to is linked to START / END
+					if (pTargetCell->isLinkedToBorder(player, Border::START)) {
+						pCell->setLinkedToBorder(player, Border::START);
+						linkedToStart = true;
+					} else if (pTargetCell->isLinkedToBorder(player, Border::END)) {
+						pCell->setLinkedToBorder(player, Border::END);
+						linkedToEnd = true;
+					} else {
+						linkedToNeutral = true;
+					}
+				} // not blocked
+			} // is not empty
+		} // is candidate
+	} // candidate range
 
 	//check if we need to explore further
-	if (pCell->isLinkedToBorder(player, Border::START) && linkedToNeutral) {
+	if (newLinks) {
+		if (pCell->isLinkedToBorder(player, Border::START) && linkedToNeutral) {
 
-		// case: new cell is linked to START and linked to neutral cells
-		// => explore neutral graph and add all its cells to START
-		exploreLocalGraph(player, pCell, Border::START);
-	}
-	if (pCell->isLinkedToBorder(player, Border::END) && linkedToNeutral) {
-		// case: new cell is linked to END and linked to neutral cells
-		// => explore neutral graph and add all its cells to END
-		exploreLocalGraph(player, pCell, Border::END);
+			// case: new cell is linked to START and linked to neutral cells
+			// => explore neutral graph and add all its cells to START
+			exploreLocalGraph(player, pCell, Border::START);
+		}
+		if (pCell->isLinkedToBorder(player, Border::END) && linkedToNeutral) {
+			// case: new cell is linked to END and linked to neutral cells
+			// => explore neutral graph and add all its cells to END
+			exploreLocalGraph(player, pCell, Border::END);
+		}
 	}
 
 }

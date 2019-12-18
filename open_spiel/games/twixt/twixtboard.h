@@ -22,16 +22,13 @@ const double kMinDiscount=0.0;
 const double kMaxDiscount=1.0;
 const double kDefaultDiscount=kMaxDiscount;
 
-
 // 8 link descriptors store the properties of a link direction
 struct {
 	Tuple offsets;      // offset of the target peg, e.g. (2, -1) for ENE
 	std::vector<std::pair<Tuple, int>> blockingLinks;
 } typedef LinkDescriptor;
 
-
 const int kNumPlanes=11;  // 2 * (1 for pegs + 4 for links) + 1 for player to move
-
 
 enum Result {
   OPEN,
@@ -49,14 +46,19 @@ enum Color {
 	COLOR_COUNT
 };
 
-static std::map<Link, std::vector<Link>> blockerMap;
+static std::map<Link, std::set<Link>> blockerMap;
 
-inline const std::vector<Link>* getBlockers(Link link)  {
-	return &(blockerMap[link]);
+
+inline std::set<Link>* getBlockers(Link link)  {
+	return &blockerMap[link];
 };
 
 inline void pushBlocker(Link link, Link blockedLink ) {
-	blockerMap[link].push_back(blockedLink);
+	blockerMap[link].insert(blockedLink);
+};
+
+inline void deleteBlocker(Link link, Link blockedLink ) {
+	blockerMap[link].erase(blockedLink);
 };
 
 inline void clearBlocker() {
@@ -77,6 +79,7 @@ class Board {
 		std::vector<Action> mLegalActions[PLAYER_COUNT];
 		int mLegalActionIndex[PLAYER_COUNT][kMaxBoardSize*kMaxBoardSize];
 		std::vector<double> mTensor;
+		std::set<Link> mBlockedLinks;
 
 		void setSize(int size) { mSize = size; };
 		int getSize() const { return mSize; };
@@ -136,12 +139,18 @@ class Board {
 		bool coordsOnBorder(int, Tuple) const;
 		bool coordsOffBoard(Tuple) const;
 
+		int stringToAction(std::string s) const {
+			int x = int(s.at(0)) - int('A');
+			int y = getSize() - (int(s.at(1)) - int('0'));
+			return y * getSize() + x;
+		};
+
 	public:
 		~Board() {};
 		Board() {};
 		Board(int, bool);
 
-		std::string actionToString(int, Action) const;
+		std::string actionToString(Action) const;
 		std::string toString() const;
 		int getResult() const {	return mResult; };
 		int getMoveCounter() const { return mMoveCounter; };

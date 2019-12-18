@@ -22,7 +22,7 @@ class TwixTState: public State {
 
 		int CurrentPlayer() const override { return mCurrentPlayer; };
 		std::string ActionToString(int player, Action move) const override {
-			return mBoard.actionToString(player, move);;
+			return mBoard.actionToString(move);
 		}
 
 		std::string ToString() const override { return mBoard.toString(); };
@@ -73,7 +73,6 @@ class TwixTState: public State {
 			mBoard.applyAction(mCurrentPlayer, move);
 			if (mBoard.getResult() == Result::OPEN) { mCurrentPlayer = 1 - mCurrentPlayer; }
 			else { mCurrentPlayer = kTerminalPlayerId; }
-
 		};
 
 	private:
