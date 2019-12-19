@@ -7,7 +7,6 @@
 
 #include <vector>
 #include <string>
-#include <map>
 
 namespace open_spiel {
 namespace twixt {
@@ -22,13 +21,16 @@ const double kMinDiscount=0.0;
 const double kMaxDiscount=1.0;
 const double kDefaultDiscount=kMaxDiscount;
 
+
 // 8 link descriptors store the properties of a link direction
 struct {
-	Tuple offsets; // offset of the target peg, e.g. (2, -1) for ENE
+	Tuple offsets;      // offset of the target peg, e.g. (2, -1) for ENE
 	std::vector<std::pair<Tuple, int>> blockingLinks;
 } typedef LinkDescriptor;
 
+
 const int kNumPlanes=11;  // 2 * (1 for pegs + 4 for links) + 1 for player to move
+
 
 enum Result {
   OPEN,
@@ -46,19 +48,14 @@ enum Color {
 	COLOR_COUNT
 };
 
-static std::map<Link, std::set<Link>> blockerMap;
+static std::map<Link, std::vector<Link>> blockerMap;
 
-
-inline std::set<Link>* getBlockers(Link link)  {
-	return &blockerMap[link];
+inline std::vector<Link>* getBlockers(Link link) {
+	return &(blockerMap[link]);
 };
 
 inline void pushBlocker(Link link, Link blockedLink ) {
-	blockerMap[link].insert(blockedLink);
-};
-
-inline void deleteBlocker(Link link, Link blockedLink ) {
-	blockerMap[link].erase(blockedLink);
+	blockerMap[link].push_back(blockedLink);
 };
 
 inline void clearBlocker() {
@@ -79,7 +76,6 @@ class Board {
 		std::vector<Action> mLegalActions[PLAYER_COUNT];
 		int mLegalActionIndex[PLAYER_COUNT][kMaxBoardSize*kMaxBoardSize];
 		std::vector<double> mTensor;
-		std::set<Link> mBlockedLinks;
 
 		void setSize(int size) { mSize = size; };
 		int getSize() const { return mSize; };
@@ -102,10 +98,6 @@ class Board {
 
 		bool hasLegalActions(int player) const { return mLegalActions[player].size() > 0; };
 		void removeLegalAction(int player, Action action) {
-			// for the performance optimized version
-			// the basic test fails because actions are not sorted
-			// but it works for example.cc and mcts_example.cc
-			/*
 			int pos = mLegalActionIndex[player][action];
 			if (pos >= 0) {
 				std::vector<Action> *la = &mLegalActions[player];
@@ -114,18 +106,12 @@ class Board {
 				mLegalActionIndex[player][last] = pos;
 				la->pop_back();
 			}
-			*/
-			std::vector<Action> *la = &mLegalActions[player];
-			std::vector<Action>::iterator it;
-			it = find(la->begin(), la->end(), action);
-			if (it != la->end()) la->erase(it);
 		};
 
 		void updateResult(int, Tuple);
-		void undoFirstMove(Tuple c);
 
-		void initializeCells(bool);
-		void initializeCandidates(Tuple, Cell *, bool);
+		void initializeCells();
+		void initializeCandidates(Tuple, Cell *);
 		void initializeBlockerMap(Tuple, int, LinkDescriptor *);
 
 		void initializeLegalActions();
@@ -148,18 +134,12 @@ class Board {
 		bool coordsOnBorder(int, Tuple) const;
 		bool coordsOffBoard(Tuple) const;
 
-		int stringToAction(std::string s) const {
-			int x = int(s.at(0)) - int('A');
-			int y = getSize() - (int(s.at(1)) - int('0'));
-			return y * getSize() + x;
-		};
-
 	public:
 		~Board() {};
 		Board() {};
 		Board(int, bool);
 
-		std::string actionToString(Action) const;
+		std::string actionToString(int, Action) const;
 		std::string toString() const;
 		int getResult() const {	return mResult; };
 		int getMoveCounter() const { return mMoveCounter; };
@@ -173,35 +153,33 @@ class Board {
 // * the board has bordSize x bardSize cells
 // * the x-axis (cols) points from left to right,
 // * the y axis (rows) points from bottom to top
-// * moves are labeled by col / row, e.g. C3, F4, D2, ...
-//   (top row=1, left col=A)
-// * coordinates => move: y * boardSize + x
-// * player1: 0, X, top/bottom, colored red
-// * player2: 1, O, left/right, colored blue
-// * empty cell = 2 (EMPTY)
-// * corner cell = 3 (OVERBORD)
+// * moves/actions are labeled by col & row, e.g. C4, F4, D2, ...
+// * coordinates to moves/actions: boardSize * y + x
+// * player1: 0, X, top/bottom;
+// * player2: 1, O, left/right;
+// * EMPTY = -1
 //
-// example 8 x 8 board: red peg at C5 x/y: [0,2]
-//                      red peg at D3 x/y: [1,4]
-//                     blue peg at F5 x/y: [3,2]
+// example 8 x 8 board: red peg at C5 (x/y: [0,2]
+//                      red peg at D3 (x/y: [1,4]
+//                      blue peg at F5 (x/y: [3,2]
 //
 //     A   B   C   D   E   F   G   H
 //    ------------------------------
-// 1 | 3   2   2   2   2   2   2   3 |
+// 1 |-1  -1  -1  -1  -1  -1  -1  -1 |
 //   |                               |
-// 2 | 2   2   2   2   2   2   2   2 |
+// 2 |-1  -1  -1  -1  -1  -1  -1  -1 |
 //   |                               |
-// 3 | 2   2   2   0   2   2   2   2 |
+// 3 |-1  -1  -1   0  -1  -1  -1  -1 |
 //   |                               |
-// 4 | 2   2   2   2   2   2   2   2 |
+// 4 |-1  -1  -1  -1  -1  -1  -1  -1 |
 //   |                               |
-// 5 | 2   2   0   2   2   1   2   2 |
+// 5 |-1  -1   0  -1  -1   1  -1  -1 |
 //   |                               |
-// 6 | 2   2   2   2   2   2   2   2 |
+// 6 |-1  -1  -1  -1  -1  -1  -1  -1 |
 //   |                               |
-// 7 | 2   2   2   2   2   2   2   2 |
+// 7 |-1  -1  -1  -1  -1  -1  -1  -1 |
 //   |                               |
-// 8 | 3   2   2   2   2   2   2   3 |
+// 8 |-1  -1  -1  -1  -1  -1  -1  -1 |
 //     ------------------------------
 
 }  // namespace twixt

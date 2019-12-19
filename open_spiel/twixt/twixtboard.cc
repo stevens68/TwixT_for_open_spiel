@@ -30,13 +30,15 @@ inline std::string coordsToString(Tuple c) {
 	return "[" + std::to_string(c.first) + "," + std::to_string(c.second) + "]";
 }
 
+// ***********************************************
+
 // table of 8 link descriptors
 static vector<LinkDescriptor> kLinkDescriptorTable
 {
 	// NNE
 	{
 	   {1,  2},   // offset of target peg (2 up, 1 right)
-	   {          // blocking/blocked links
+	   {           // blocking/blocked links
 			{{0,  1}, Compass::ENE },
 			{{-1, 0}, Compass::ENE },
 
@@ -52,8 +54,8 @@ static vector<LinkDescriptor> kLinkDescriptorTable
 	},
 	// ENE
 	{
-	   {2,  1},
-	   {
+	   {2,  1},    // offset of target peg
+	   {           // blocking/blocked links
 			{{ 0, -1}, Compass::NNE },
 			{{ 1,  0}, Compass::NNE },
 
@@ -69,8 +71,8 @@ static vector<LinkDescriptor> kLinkDescriptorTable
 	},
 	// ESE
 	{
-	   { 2, -1},
-	   {
+	   { 2, -1},   // offset of target peg
+	   {           // blocking/blocked links
 			{{ 0, -1}, Compass::NNE },
 			{{ 1, -1}, Compass::NNE },
 			{{ 0, -2}, Compass::NNE },
@@ -86,8 +88,8 @@ static vector<LinkDescriptor> kLinkDescriptorTable
 	},
 	// SSE
 	{
-	   { 1, -2},
-	   {
+	   { 1, -2},   // offset of target peg
+	   {           // blocking/blocked links
 			{{ 0, -1}, Compass::NNE },
 			{{ 0, -2}, Compass::NNE },
 			{{ 0, -3}, Compass::NNE },
@@ -103,8 +105,8 @@ static vector<LinkDescriptor> kLinkDescriptorTable
 	},
 	// SSW
 	{
-	   {-1, -2},
-	   {
+	   {-1, -2},    // offset of target peg
+	   {           // blocking/blocked links
 			{{-1, -1}, Compass::ENE },
 			{{-2, -2}, Compass::ENE },
 
@@ -120,8 +122,8 @@ static vector<LinkDescriptor> kLinkDescriptorTable
 	},
 	// WSW
 	{
-	   {-2, -1},
-	   {
+	   {-2, -1},   // offset of target peg
+	   {           // blocking/blocked links
 			{{-2, -2}, Compass::NNE },
 			{{-1, -1}, Compass::NNE },
 
@@ -137,8 +139,8 @@ static vector<LinkDescriptor> kLinkDescriptorTable
 	},
 	// WNW
 	{
-	   {-2, 1},
-	   {
+	   {-2, 1},   // offset of target peg
+	   {           // blocking/blocked links
 			{{-2,  0}, Compass::NNE },
 			{{-1,  0}, Compass::NNE },
 			{{-2, -1}, Compass::NNE },
@@ -154,8 +156,8 @@ static vector<LinkDescriptor> kLinkDescriptorTable
 	},
 	// NNW
 	{
-	   {-1, 2},
-	   {
+	   {-1, 2},   // offset of target peg
+	   {           // blocking/blocked links
 			{{-1,  1}, Compass::NNE },
 			{{-1,  0}, Compass::NNE },
 			{{-1, -1}, Compass::NNE },
@@ -177,7 +179,7 @@ Board::Board(int size, bool ansiColorOutput) {
 	setSize(size);
 	setAnsiColorOutput(ansiColorOutput);
 
-	initializeCells(true);
+	initializeCells();
 	initializeLegalActions();
 }
 
@@ -210,8 +212,7 @@ void Board::updateResult(int player, Tuple c) {
 
 	// check if we are early in the game...
 	if (getMoveCounter() < getSize() - 1) {
-		// e.g. less than 6 moves played on a 6x6 board
-		// => no win or draw possible, no need to update
+		// less than 5 moves played on a 6x6 board => no win or draw possible, no need to update
 		return;
 	}
 
@@ -223,11 +224,10 @@ void Board::updateResult(int player, Tuple c) {
 
 }
 
-void Board::initializeCells(bool initBlockerMap) {
+void Board::initializeCells() {
 
 	mCell.resize(getSize());
 	clearBlocker();
-	mBlockedLinks.clear();
 
 	// initialize board with color (empty or overboard)
 	for (int x = 0; x < getSize(); x++) {
@@ -252,21 +252,19 @@ void Board::initializeCells(bool initBlockerMap) {
 					pCell->setLinkedToBorder(PLAYER_RED, Border::END);
 				}
 
-				initializeCandidates(c, pCell, initBlockerMap);
+				initializeCandidates(c, pCell);
 			}
 		}
 	}
 }
 
-void Board::initializeCandidates(Tuple c, Cell *pCell, bool initBlockerMap) {
+void Board::initializeCandidates(Tuple c, Cell *pCell) {
 
 	for (int dir = 0; dir < COMPASS_COUNT; dir++) {
 		LinkDescriptor *ld = &(kLinkDescriptorTable[dir]);
 		Tuple tc = c + ld->offsets;
 		if (! coordsOffBoard(tc)) {
-			if (initBlockerMap) {
-				initializeBlockerMap(c, dir, ld);
-			}
+			initializeBlockerMap(c, dir, ld);
 			pCell->setNeighbor(dir, tc);
 			Cell *pTargetCell = getCell(tc);
 			if (! (coordsOnBorder(PLAYER_RED, c) && coordsOnBorder(PLAYER_BLUE, tc)) &&
@@ -323,7 +321,7 @@ string Board::toString() const {
 		}
 		s.append("\n");
 
-		// print "peg" row
+		// print peg row
 		getSize() - y < 10 ? s.append("  ") : s.append(" ");
 		appendColorString(&s, kAnsiBlue, to_string(getSize() - y) + " ");
 		for (int x = 0; x < getSize(); x++) {
@@ -358,10 +356,24 @@ string Board::toString() const {
 		break;
 	}
 
+		/* debug >>>>
+	s.append("\n");
+	for (int player = PLAYER_RED; player < PLAYER_COUNT; player++) {
+		vector<Action>::iterator it;
+		vector<Action> *v = getLegalActions(player);
+		for (it = v->begin(); it != v->end(); it++) {
+			s.append(to_string(*it));
+			s.append(" ");
+		}
+		s.append("\n");
+	}
+	s.append("\n");
+	<<< debug */
+
 	return s;
 }
 
-string Board::actionToString(Action move) const {
+string Board::actionToString(int player, Action move) const {
 
 	string s = "";
 	s += char(int('A') + move % getSize());
@@ -505,20 +517,24 @@ void Board::appendBeforeRow(string *s, Tuple c) const {
 	appendLinkChar(s, c + (Tuple) {-1, 0}, Compass::ENE, "/");
 	appendLinkChar(s, c + (Tuple) {-1,-1}, Compass::NNE, "/");
 	appendLinkChar(s, c + (Tuple) { 0, 0}, Compass::WNW, "_");
-	if (len == s->length()) s->append(" ");
+	if (len == s->length())
+		s->append(" ");
 
 	//  0, +1
 	len = s->length();
 	appendLinkChar(s, c, Compass::NNE, "|");
-	if (len == s->length())	appendLinkChar(s, c, Compass::NNW, "|");
-	if (len == s->length()) s->append(" ");
+	if (len == s->length())
+		appendLinkChar(s, c, Compass::NNW, "|");
+	if (len == s->length())
+		s->append(" ");
 
 	// +1, +1
 	len = s->length();
 	appendLinkChar(s, c + (Tuple) {+1, 0}, Compass::WNW, "\\");
 	appendLinkChar(s, c + (Tuple) {+1,-1}, Compass::NNW, "\\");
 	appendLinkChar(s, c + (Tuple) { 0, 0}, Compass::ENE, "_");
-	if (len == s->length())	s->append(" ");
+	if (len == s->length())
+		s->append(" ");
 
 }
 
@@ -528,7 +544,8 @@ void Board::appendPegRow(string *s, Tuple c) const {
 	int len = s->length();
 	appendLinkChar(s, c + (Tuple) {-1,-1}, Compass::NNE, "|");
 	appendLinkChar(s, c + (Tuple) { 0, 0}, Compass::WSW, "_");
-	if (len == s->length()) s->append(" ");
+	if (len == s->length())
+		s->append(" ");
 
 	//  0,  0
 	appendPegChar(s, c);
@@ -537,7 +554,8 @@ void Board::appendPegRow(string *s, Tuple c) const {
 	len = s->length();
 	appendLinkChar(s, c + (Tuple) {+1,-1}, Compass::NNW, "|");
 	appendLinkChar(s, c + (Tuple) { 0, 0}, Compass::ESE, "_");
-	if (len == s->length()) s->append(" ");
+	if (len == s->length())
+		s->append(" ");
 
 }
 
@@ -547,73 +565,69 @@ void Board::appendAfterRow(string *s, Tuple c) const {
 	int len = s->length();
 	appendLinkChar(s, c + (Tuple) {+1, -1}, Compass::WNW, "\\");
 	appendLinkChar(s, c + (Tuple) { 0, -1}, Compass::NNW, "\\");
-	if (len == s->length()) s->append(" ");
+	if (len == s->length())
+		s->append(" ");
 
 	//  0, -1
 	len = s->length();
 	appendLinkChar(s, c + (Tuple) {-1, -1}, Compass::ENE, "_");
 	appendLinkChar(s, c + (Tuple) {+1, -1}, Compass::WNW, "_");
 	appendLinkChar(s, c, Compass::SSW, "|");
-	if (len == s->length()) appendLinkChar(s, c, Compass::SSE, "|");
-	if (len == s->length()) s->append(" ");
+	if (len == s->length()) {
+		appendLinkChar(s, c, Compass::SSE, "|");
+	}
+	if (len == s->length())
+		s->append(" ");
 
 	// -1, -1
 	len = s->length();
 	appendLinkChar(s, c + (Tuple) {-1, -1}, Compass::ENE, "/");
 	appendLinkChar(s, c + (Tuple) { 0, -1}, Compass::NNE, "/");
-	if (len == s->length()) s->append(" ");
-}
-
-void Board::undoFirstMove(Tuple c) {
-	Cell *pCell = getCell(c);
-	pCell->setColor(EMPTY);
-	// initialize Candidates but not static blockerMap
-	initializeCandidates(c, pCell, false);
-	initializeLegalActions();
+	if (len == s->length())
+		s->append(" ");
 }
 
 void Board::applyAction(int player, Action move) {
 
-	Tuple c = { (int) move % getSize(), (int) move / getSize() };
 
 	if (getMoveCounter() == 1) {
 		if (move == getMoveOne()) {
-			// second player swapped
+			// player 2 swapped
 			setSwapped(true);
-
-			// undo first move (peg and legal actions)
-			undoFirstMove(c);
-
 			// turn move 90° clockwise
 			move = (move % getSize()) * getSize()
 					+ (getSize() - (move / getSize()) - 1);
 
-			// get coordinates for move
-			c = { (int) move % getSize(), (int) move / getSize() };
+			// undo first move (peg and legal actions)
+			initializeCells();
+			initializeLegalActions();
 
 		} else {
-			// not swapped => regular move
+			// not swapped: regular move
 			// remove move #1 from legal moves
 			removeLegalAction(PLAYER_RED, getMoveOne());
 			removeLegalAction(PLAYER_BLUE, getMoveOne());
 		}
 	}
 
+	// calculate virtual coords from move
+	Tuple c = { (int) move % getSize(), (int) move / getSize() };
+
+	// set links
 
 	setPegAndLinks(player, c);
 
+	incMoveCounter();
 
-	if (getMoveCounter() == 0) {
+	if (getMoveCounter() == 1) {
 		// do not remove the move from legal actions but store it
-		// because second player might want to swap, i.e. chose same move
+		// because player 2 might want to swap
 		setMoveOne(move);
 	} else {
-		// other wise remove move from mLegalActions
+		// remove move one from mLegalActions
 		removeLegalAction(PLAYER_RED, move);
 		removeLegalAction(PLAYER_BLUE, move);
 	}
-
-	incMoveCounter();
 
 	// Update the predicted result and update mCurrentPlayer...
 	updateResult(player, c);
@@ -632,59 +646,59 @@ void Board::setPegAndLinks(int player, Tuple c) {
 	pCell->setColor(player);
 
 	int dir=0;
-	bool newLinks = false;
-	// check all candidates (neigbors that are empty or have same color)
 	for (int cand=1, dir=0; cand <= pCell->getCandidates(player) ; cand<<=1, dir++) {
 		if (pCell->isCandidate(player, cand)) {
 			Cell *pTargetCell = getCell(pCell->getNeighbor(dir));
 			if (pTargetCell->getColor() == EMPTY) {
-				// pCell is not a candidate for pTargetCell anymore
-				// (from opponent's perspective)
+				// pCell is not a candidate for pTargetCell from opponent's persp. anymore
+				//cout << "**** about to delete candidate " << to_string(oppDir(dir)) << " from " << coordsToString(pCell->getNeighbor(dir)) << endl;
+				//cout << "Before: " << to_string(pTargetCell->getCandidates(1-player)) << endl;
+
 				pTargetCell->deleteCandidate(1-player, oppCand(cand));
+				//cout << "After:  " << to_string(pTargetCell->getCandidates(1-player)) << endl;
+
+
 			} else {
-				// check if there are blocking links before setting link
-				set<Link> *blockers = getBlockers((Link) {c, dir});
-				bool blocked = false;
+				//cout << "**** about link to " << coordsToString(pCell->getNeighbor(dir)) << endl;
+				// set link
+				pCell->setLink(dir);
+				pTargetCell->setLink(oppDir(dir));
+
+				// set blockers
+				vector<Link> *blockers = getBlockers((Link) {c, dir});
 				for (auto &&bl : *blockers) {
-					if (getCell(bl.first)->hasLink(bl.second)) {
-						blocked = true;
-						break;
-					}
+					//cout << "       blocking: "  << coordsToString(bl.first) << ": " << to_string(bl.second) << endl;
+					getCell(bl.first)->deleteCandidate(bl.second);
 				}
 
-				if (! blocked) {
-					// we set the link, and set the flag that there is at least one new link
-					pCell->setLink(dir);
-					pTargetCell->setLink(oppDir(dir));
-					newLinks = true;
-
-					// check if cell we link to is linked to START border / END border
-					if (pTargetCell->isLinkedToBorder(player, Border::START)) {
-						pCell->setLinkedToBorder(player, Border::START);
-						linkedToStart = true;
-					} else if (pTargetCell->isLinkedToBorder(player, Border::END)) {
-						pCell->setLinkedToBorder(player, Border::END);
-						linkedToEnd = true;
-					} else {
-						linkedToNeutral = true;
-					}
-				} // not blocked
-			} // is not empty
-		} // is candidate
-	} // candidate range
+				// check if cell we link to is linked to START / END
+				if (pTargetCell->isLinkedToBorder(player, Border::START)) {
+					pCell->setLinkedToBorder(player, Border::START);
+					linkedToStart = true;
+				}
+				if (pTargetCell->isLinkedToBorder(player, Border::END)) {
+					pCell->setLinkedToBorder(player, Border::END);
+					linkedToEnd = true;
+				}
+				if (! pTargetCell->isLinkedToBorder(player, Border::START) &&
+					! pTargetCell->isLinkedToBorder(player, Border::END) ) {
+					linkedToNeutral = true;
+				}
+			}
+		}
+	}
 
 	//check if we need to explore further
-	if (newLinks) {
-		if (pCell->isLinkedToBorder(player, Border::START) && linkedToNeutral) {
-			// case: new cell is linked to START and linked to neutral cells
-			// => explore neutral graph and add all its cells to START
-			exploreLocalGraph(player, pCell, Border::START);
-		}
-		if (pCell->isLinkedToBorder(player, Border::END) && linkedToNeutral) {
-			// case: new cell is linked to END and linked to neutral cells
-			// => explore neutral graph and add all its cells to END
-			exploreLocalGraph(player, pCell, Border::END);
-		}
+	if (pCell->isLinkedToBorder(player, Border::START) && linkedToNeutral) {
+
+		// case: new cell is linked to START and linked to neutral cells
+		// => explore neutral graph and add all its cells to START
+		exploreLocalGraph(player, pCell, Border::START);
+	}
+	if (pCell->isLinkedToBorder(player, Border::END) && linkedToNeutral) {
+		// case: new cell is linked to END and linked to neutral cells
+		// => explore neutral graph and add all its cells to END
+		exploreLocalGraph(player, pCell, Border::END);
 	}
 
 }

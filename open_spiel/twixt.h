@@ -4,7 +4,6 @@
 
 #include "open_spiel/spiel.h"
 #include "open_spiel/games/twixt/twixtboard.h"
-#include <iostream>
 
 // https://en.wikipedia.org/wiki/TwixT
 
@@ -22,7 +21,7 @@ class TwixTState: public State {
 
 		int CurrentPlayer() const override { return mCurrentPlayer; };
 		std::string ActionToString(int player, Action move) const override {
-			return mBoard.actionToString(move);
+			return mBoard.actionToString(player, move);;
 		}
 
 		std::string ToString() const override { return mBoard.toString(); };
