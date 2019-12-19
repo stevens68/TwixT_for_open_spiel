@@ -23,14 +23,14 @@ enum Player {
 
 // eight directions of links from 0 to 7
 enum Compass {
-  NNE,  // North-North-East, 2 up,   1 right
-  ENE,  // East-North-East,  1 up,   2 right
-  ESE,  // East-South-East,  1 down, 2 right
-  SSE,  // South-South-East, 2 down, 1 right
-  SSW,  // South-South-West, 2 down, 1 left
-  WSW,  // West-South-West,  1 down, 2 left
-  WNW,  // West-North-West,  1 up,   2 left
-  NNW,  // North-North-West, 2 up,   1 left
+  NNE,  // North-North-East, 1 right, 2 up
+  ENE,  // East-North-East,  2 right, 1 up
+  ESE,  // East-South-East,  2 right, 1 down
+  SSE,  // South-South-East, 1 right, 2 down
+  SSW,  // South-South-West, 1 left,  2 down
+  WSW,  // West-South-West,  2 left,  1 down
+  WNW,  // West-North-West,  2 left,  1 up
+  NNW,  // North-North-West, 1 left,  2 up
   COMPASS_COUNT
 };
 
@@ -39,23 +39,21 @@ class Cell {
 		int mColor;
 		// bitmap of outgoing links from this cell
 		int mLinks = 0;
-		// bitmap of neighbors of for player
+		// bitmap of candidates of a player
+		// (neighbors that are empty or have same color
 		int mCandidates[PLAYER_COUNT] = { 0, 0 };
-		// array of neighbor tuples
+		// array of neighbor tuples (cells in knight's move distance that are on board)
 		Tuple mNeighbors[COMPASS_COUNT];
-		// indicator if cell is linked to START|END line of player
+		// indicator if cell is linked to START|END border of player 0|1
 		bool mLinkedToBorder[PLAYER_COUNT][BORDER_COUNT] = { {false, false}, {false, false} };
 
 	public:
 		int getColor() const { return mColor; };
 		void setColor(int color) { mColor = color; };
 
-		void clearLinks() { mLinks = 0; };
 		void setLink(int dir) { mLinks |= (1UL << dir); };
-		bool isLinked(int cand) const { return mLinks & cand; };
 		int getLinks() const { return mLinks; };
-
-
+		bool isLinked(int cand) const { return mLinks & cand; };
 		bool hasLink(int dir) const { return mLinks & (1UL << dir); };
 		bool hasLinks() const { return mLinks > 0; };
 
@@ -79,7 +77,5 @@ class Cell {
 
 }  // namespace twixt
 }  // namespace open_spiel
-
-
 
 #endif  // THIRD_PARTY_OPEN_SPIEL_GAMES_TWIXTCELL_H_

@@ -24,7 +24,7 @@ const double kDefaultDiscount=kMaxDiscount;
 
 // 8 link descriptors store the properties of a link direction
 struct {
-	Tuple offsets;      // offset of the target peg, e.g. (2, -1) for ENE
+	Tuple offsets; // offset of the target peg, e.g. (2, -1) for ENE
 	std::vector<std::pair<Tuple, int>> blockingLinks;
 } typedef LinkDescriptor;
 
@@ -102,6 +102,10 @@ class Board {
 
 		bool hasLegalActions(int player) const { return mLegalActions[player].size() > 0; };
 		void removeLegalAction(int player, Action action) {
+			// for the performance optimized version
+			// the basic test fails because actions are not sorted
+			// but it works for example.cc and mcts_example.cc
+			/*
 			int pos = mLegalActionIndex[player][action];
 			if (pos >= 0) {
 				std::vector<Action> *la = &mLegalActions[player];
@@ -110,6 +114,11 @@ class Board {
 				mLegalActionIndex[player][last] = pos;
 				la->pop_back();
 			}
+			*/
+			std::vector<Action> *la = &mLegalActions[player];
+			std::vector<Action>::iterator it;
+			it = find(la->begin(), la->end(), action);
+			if (it != la->end()) la->erase(it);
 		};
 
 		void updateResult(int, Tuple);
@@ -164,33 +173,35 @@ class Board {
 // * the board has bordSize x bardSize cells
 // * the x-axis (cols) points from left to right,
 // * the y axis (rows) points from bottom to top
-// * moves/actions are labeled by col & row, e.g. C4, F4, D2, ...
-// * coordinates to moves/actions: boardSize * y + x
-// * player1: 0, X, top/bottom;
-// * player2: 1, O, left/right;
-// * EMPTY = -1
+// * moves are labeled by col / row, e.g. C3, F4, D2, ...
+//   (top row=1, left col=A)
+// * coordinates => move: y * boardSize + x
+// * player1: 0, X, top/bottom, colored red
+// * player2: 1, O, left/right, colored blue
+// * empty cell = 2 (EMPTY)
+// * corner cell = 3 (OVERBORD)
 //
-// example 8 x 8 board: red peg at C5 (x/y: [0,2]
-//                      red peg at D3 (x/y: [1,4]
-//                      blue peg at F5 (x/y: [3,2]
+// example 8 x 8 board: red peg at C5 x/y: [0,2]
+//                      red peg at D3 x/y: [1,4]
+//                     blue peg at F5 x/y: [3,2]
 //
 //     A   B   C   D   E   F   G   H
 //    ------------------------------
-// 1 |-1  -1  -1  -1  -1  -1  -1  -1 |
+// 1 | 3   2   2   2   2   2   2   3 |
 //   |                               |
-// 2 |-1  -1  -1  -1  -1  -1  -1  -1 |
+// 2 | 2   2   2   2   2   2   2   2 |
 //   |                               |
-// 3 |-1  -1  -1   0  -1  -1  -1  -1 |
+// 3 | 2   2   2   0   2   2   2   2 |
 //   |                               |
-// 4 |-1  -1  -1  -1  -1  -1  -1  -1 |
+// 4 | 2   2   2   2   2   2   2   2 |
 //   |                               |
-// 5 |-1  -1   0  -1  -1   1  -1  -1 |
+// 5 | 2   2   0   2   2   1   2   2 |
 //   |                               |
-// 6 |-1  -1  -1  -1  -1  -1  -1  -1 |
+// 6 | 2   2   2   2   2   2   2   2 |
 //   |                               |
-// 7 |-1  -1  -1  -1  -1  -1  -1  -1 |
+// 7 | 2   2   2   2   2   2   2   2 |
 //   |                               |
-// 8 |-1  -1  -1  -1  -1  -1  -1  -1 |
+// 8 | 3   2   2   2   2   2   2   3 |
 //     ------------------------------
 
 }  // namespace twixt
