@@ -1,4 +1,3 @@
-
 #include "open_spiel/games/twixt/twixtboard.h"
 #include "open_spiel/games/twixt/twixtcell.h"
 
@@ -11,7 +10,6 @@ namespace twixt {
 const string kAnsiRed = "\e[91m";
 const string kAnsiBlue = "\e[94m";
 const string kAnsiDefault = "\e[0m";
-
 
 static pair<int, int> operator+(const pair<int, int> & l,const pair<int, int> & r) {
     return { l.first + r.first, l.second + r.second };
@@ -210,7 +208,7 @@ void Board::updateResult(int player, Tuple c) {
 
 	// check if we are early in the game...
 	if (getMoveCounter() < getSize() - 1) {
-		// e.g. less than 6 moves played on a 6x6 board
+		// e.g. less than 5 moves played on a 6x6 board
 		// => no win or draw possible, no need to update
 		return;
 	}
@@ -220,14 +218,12 @@ void Board::updateResult(int player, Tuple c) {
 		setResult(Result::DRAW);
 		return;
 	}
-
 }
 
 void Board::initializeCells(bool initBlockerMap) {
 
 	mCell.resize(getSize());
 	clearBlocker();
-	mBlockedLinks.clear();
 
 	// initialize board with color (empty or overboard)
 	for (int x = 0; x < getSize(); x++) {

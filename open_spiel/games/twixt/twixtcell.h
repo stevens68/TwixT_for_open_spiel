@@ -1,7 +1,5 @@
-
 #ifndef THIRD_PARTY_OPEN_SPIEL_GAMES_TWIXTCELL_H_
 #define THIRD_PARTY_OPEN_SPIEL_GAMES_TWIXTCELL_H_
-
 
 typedef std::pair<int, int> Tuple;
 typedef std::pair<Tuple, int> Link;
@@ -35,14 +33,16 @@ enum Compass {
 };
 
 class Cell {
+
 	private:
 		int mColor;
 		// bitmap of outgoing links from this cell
 		int mLinks = 0;
 		// bitmap of candidates of a player
-		// (neighbors that are empty or have same color
+		// (neighbors that are empty or have same color)
 		int mCandidates[PLAYER_COUNT] = { 0, 0 };
-		// array of neighbor tuples (cells in knight's move distance that are on board)
+		// array of neighbor tuples
+		// (cells in knight's move distance that are on board)
 		Tuple mNeighbors[COMPASS_COUNT];
 		// indicator if cell is linked to START|END border of player 0|1
 		bool mLinkedToBorder[PLAYER_COUNT][BORDER_COUNT] = { {false, false}, {false, false} };
@@ -71,9 +71,7 @@ class Cell {
 
 		void setLinkedToBorder(int player, int border) { mLinkedToBorder[player][border] = true; };
 	    bool isLinkedToBorder(int player, int border) const { return mLinkedToBorder[player][border]; };
-
 };
-
 
 }  // namespace twixt
 }  // namespace open_spiel

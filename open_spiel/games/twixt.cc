@@ -1,6 +1,4 @@
-
 #include "open_spiel/spiel_utils.h"
-
 
 #include "open_spiel/games/twixt.h"
 #include "open_spiel/games/twixt/twixtboard.h"
@@ -12,9 +10,7 @@
 #include <map>
 #include <set>
 #include <string>
-
 #include <iostream>
-
 
 namespace open_spiel {
 namespace twixt {
@@ -49,24 +45,18 @@ REGISTER_SPIEL_GAME(kGameType, Factory);
 
 }  // namespace
 
-// ***************************  TwixtState *****************************************
-
 TwixTState::~TwixTState() {
 }
-
 
 TwixTState::TwixTState(std::shared_ptr<const Game> game) :   State(game) {
 
 	const TwixTGame &parent_game = static_cast<const TwixTGame&>(*game);
-
 	mBoard = Board(
 		parent_game.getBoardSize(),
 		parent_game.getAnsiColorOutput()
 	);
 
 }
-
-// ********************************   TwixTGame ************************************************
 
 TwixTGame::TwixTGame(const GameParameters &params) :
 		Game(kGameType, params),
@@ -93,7 +83,6 @@ TwixTGame::TwixTGame(const GameParameters &params) :
 						+ std::to_string(mDiscount) + "; ");
 	}
 }
-
 
 }  // namespace twixt
 }  // namespace open_spiel

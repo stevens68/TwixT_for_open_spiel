@@ -1,4 +1,3 @@
-
 #ifndef THIRD_PARTY_OPEN_SPIEL_GAMES_TWIXTBOARD_H_
 #define THIRD_PARTY_OPEN_SPIEL_GAMES_TWIXTBOARD_H_
 
@@ -28,7 +27,7 @@ struct {
 	std::vector<std::pair<Tuple, int>> blockingLinks;
 } typedef LinkDescriptor;
 
-const int kNumPlanes=11;  // 2 * (1 for pegs + 4 for links) + 1 for player to move
+const int kNumPlanes=11;  // 2 * (1 for unlinked pegs + 4 for links) + 1 for player to move
 
 enum Result {
   OPEN,
@@ -46,8 +45,8 @@ enum Color {
 	COLOR_COUNT
 };
 
+// blockerMap stores set of blocking links for each link
 static std::map<Link, std::set<Link>> blockerMap;
-
 
 inline std::set<Link>* getBlockers(Link link)  {
 	return &blockerMap[link];
@@ -74,12 +73,11 @@ class Board {
 		int mMoveOne;
 		int mResult = Result::OPEN;
 		std::vector<std::vector<Cell>> mCell;
-		int mSize;
+		int mSize;  // length of a side of the board
 		bool mAnsiColorOutput;
 		std::vector<Action> mLegalActions[PLAYER_COUNT];
 		int mLegalActionIndex[PLAYER_COUNT][kMaxBoardSize*kMaxBoardSize];
 		std::vector<double> mTensor;
-		std::set<Link> mBlockedLinks;
 
 		void setSize(int size) { mSize = size; };
 		int getSize() const { return mSize; };
@@ -168,22 +166,21 @@ class Board {
 		void applyAction(int, Action);
 };
 
-
 // twixt board:
-// * the board has bordSize x bardSize cells
+// * the board has boardSize x boardSize cells
 // * the x-axis (cols) points from left to right,
 // * the y axis (rows) points from bottom to top
-// * moves are labeled by col / row, e.g. C3, F4, D2, ...
-//   (top row=1, left col=A)
-// * coordinates => move: y * boardSize + x
-// * player1: 0, X, top/bottom, colored red
-// * player2: 1, O, left/right, colored blue
+// * moves are labeled by col / row, e.g.  C3, F4, D2, ... (top row=1, left col=A)
+// * actions are indexed from 0 to boardSize^2
+// * coordinates to action:  [x,y] => move: y * boardSize + x
+// * player1: 0, X, top/bottom, red
+// * player2: 1, O, left/right, blue
 // * empty cell = 2 (EMPTY)
-// * corner cell = 3 (OVERBORD)
+// * corner cell = 3 (OVERBOARD)
 //
-// example 8 x 8 board: red peg at C5 x/y: [0,2]
-//                      red peg at D3 x/y: [1,4]
-//                     blue peg at F5 x/y: [3,2]
+// example 8 x 8 board: red peg at [2,3]: label=C5, action=26
+//                      red peg at [3,5]: label=D3, action=43
+//                     blue peg at [5,3]: label=F5, action=29
 //
 //     A   B   C   D   E   F   G   H
 //    ------------------------------
@@ -203,6 +200,10 @@ class Board {
 //   |                               |
 // 8 | 3   2   2   2   2   2   2   3 |
 //     ------------------------------
+
+//there's a link from C5 to D3:
+//cell[2][3].links = 00000001  (bit 1 set for NNE direction)
+//cell[3][5].links = 00010000  (bit 5 set for SSW direction)
 
 }  // namespace twixt
 }  // namespace open_spiel

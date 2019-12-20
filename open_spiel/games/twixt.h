@@ -11,7 +11,6 @@
 namespace open_spiel {
 namespace twixt {
 
-
 class TwixTState: public State {
 	public:
 		~TwixTState();
@@ -65,9 +64,6 @@ class TwixTState: public State {
 			return mBoard.getLegalActions(mCurrentPlayer);
 		};
 
-		bool coordOnBorderline(int, Tuple) const;
-		bool coordOverBoard(Tuple) const;
-
 	protected:
 		void DoApplyAction(Action move) override {
 			mBoard.applyAction(mCurrentPlayer, move);
@@ -76,7 +72,7 @@ class TwixTState: public State {
 		};
 
 	private:
-		int mCurrentPlayer = PLAYER_RED;         // Player zero goes first
+		int mCurrentPlayer = PLAYER_RED;  // PLAYER_RED=0, PLAYER_BLUE=1
 		Board mBoard;
 		double mDiscount = kDefaultDiscount;
 
