@@ -7,7 +7,7 @@ C++ implementation of the board game [TwixT](https://en.wikipedia.org/wiki/TwixT
 ## Installation
 
 * Copy games/twixt* into the games folder of your open_spiel installation
-* Edit games/CMakeLists.txt and add twixt.cc, twixt.h
+* Edit games/CMakeLists.txt and add twixt.cc, twixt.h, twixt/twixtboard.cc, twixt/twixtboard.h, twixt/twixtcell.h
 * Build the targets as described [here](https://github.com/deepmind/open_spiel/blob/master/docs/install.md)
 
 ## Examples
