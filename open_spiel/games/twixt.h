@@ -87,7 +87,7 @@ class TwixTGame: public Game {
 			return std::unique_ptr<State>(new TwixTState(shared_from_this()));
 		}
 
-		int NumDistinctActions() const override { return kMaxBoardSize*kMaxBoardSize; };
+		int NumDistinctActions() const override { return mBoardSize*mBoardSize; };
 		int NumPlayers() const override { return PLAYER_COUNT; };
 		double MinUtility() const override { return -1; };
 		double UtilitySum() const override { return 0; };

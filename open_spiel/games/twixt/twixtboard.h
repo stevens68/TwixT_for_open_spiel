@@ -77,7 +77,9 @@ class Board {
 		bool mAnsiColorOutput;
 		std::vector<Action> mLegalActions[PLAYER_COUNT];
 		int mLegalActionIndex[PLAYER_COUNT][kMaxBoardSize*kMaxBoardSize];
-		std::vector<double> mTensor;
+		std::vector<double> mTensor[PLAYER_COUNT];
+
+
 
 		void setSize(int size) { mSize = size; };
 		int getSize() const { return mSize; };
@@ -125,12 +127,9 @@ class Board {
 		void initializeCells(bool);
 		void initializeCandidates(Tuple, Cell *, bool);
 		void initializeBlockerMap(Tuple, int, LinkDescriptor *);
+		void initializeTensor();
 
 		void initializeLegalActions();
-
-		void addBinaryPlane(int, std::vector<double> *) const;
-		void addLinkPlane(int, int, std::vector<double> *) const;
-		void addPegPlane(int, std::vector<double> *) const;
 
 		void setPegAndLinks(int, Tuple);
 		void exploreLocalGraph(int, Cell * , enum Border);
@@ -162,6 +161,8 @@ class Board {
 		int getResult() const {	return mResult; };
 		int getMoveCounter() const { return mMoveCounter; };
 		void createTensor(int, std::vector<double> *) const;
+		void updatePegOnTensor(int, Tuple);
+		void updateLinkOnTensor(int, Tuple, int);
 		std::vector<Action> getLegalActions(int player) const { return mLegalActions[player]; };
 		void applyAction(int, Action);
 };

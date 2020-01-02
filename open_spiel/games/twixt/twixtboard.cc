@@ -35,17 +35,17 @@ static vector<LinkDescriptor> kLinkDescriptorTable
 	{
 	   {1,  2},   // offset of target peg (2 up, 1 right)
 	   {          // blocking/blocked links
-			{{0,  1}, Compass::ENE },
-			{{-1, 0}, Compass::ENE },
+			{{ 0,  1}, Compass::ENE },
+			{{-1,  0}, Compass::ENE },
 
 			{{ 0,  2}, Compass::ESE },
 			{{ 0,  1}, Compass::ESE },
 			{{-1,  2}, Compass::ESE },
 			{{-1,  1}, Compass::ESE },
 
-			{{0,  1}, Compass::SSE },
-			{{0,  2}, Compass::SSE },
-			{{0,  3}, Compass::SSE }
+			{{ 0,  1}, Compass::SSE },
+			{{ 0,  2}, Compass::SSE },
+			{{ 0,  3}, Compass::SSE }
 	   }
 	},
 	// ENE
@@ -171,12 +171,29 @@ static vector<LinkDescriptor> kLinkDescriptorTable
 };
 
 
+
 Board::Board(int size, bool ansiColorOutput) {
 	setSize(size);
 	setAnsiColorOutput(ansiColorOutput);
 
+
 	initializeCells(true);
 	initializeLegalActions();
+	initializeTensor();
+}
+
+void Board::initializeTensor() {
+
+	int planeArea = getSize() * (getSize()-2);
+	// PLAYER_RED: 10 planes: 0.0, 1 plane 0.0
+	// PLAYER_BLUE: 10 planes: 0.0, 1 plane 1.0
+
+	mTensor[PLAYER_RED].resize(kNumPlanes * planeArea);
+	mTensor[PLAYER_BLUE].resize(kNumPlanes * planeArea);
+	for (int i=0; i < planeArea; i++) {
+		mTensor[PLAYER_BLUE][(kNumPlanes-1) * planeArea + i] = 1.0;
+	}
+
 }
 
 void Board::initializeBlockerMap(Tuple c, int dir, LinkDescriptor *ld) {
@@ -367,91 +384,9 @@ string Board::actionToString(Action move) const {
 
 void Board::createTensor(int player, vector<double> *values) const {
 
-	values->resize(0);
-	values->reserve(kNumPlanes * getSize() * (getSize() - 2));
-
-	for (int player = PLAYER_RED; player < PLAYER_COUNT; player++) {
-		// add peg configuration
-		addPegPlane(player, values);
-
-		// add link configuration
-		for (int dir = 0; dir < (COMPASS_COUNT / 2); dir++) {
-			addLinkPlane(player, dir, values);
-		}
-	}
-
-	// add plane that indicates who's turn it is
-	addBinaryPlane(player, values);
-
+	*values = mTensor[player];
 }
 
-// Adds a binary plane to the information state vector - all ones or all zeros
-void Board::addBinaryPlane(int player, std::vector<double> *values) const {
-	double normalizedVal = static_cast<double>(player);
-	values->insert(values->end(), getSize() * (getSize() - 2), normalizedVal);
-}
-
-// Adds a plane to the information state vector corresponding to the presence
-// and absence of the given link at each cell
-void Board::addLinkPlane(int player, int dir, std::vector<double> *values) const {
-
-	if (player == PLAYER_RED) {
-		for (int y = 0; y < getSize(); y++) {
-			for (int x = 1; x < getSize() - 1; x++) {
-				if (getConstCell({x,y})->getColor() == COLOR_RED &&
-					getConstCell({x,y})->hasLink(dir) )  {
-					values->push_back(1.0);
-				} else {
-					values->push_back(0.0);
-				}
-			}
-		}
-	} else {
-		/* PLAYER_BLUE => turn board 90° clockwise */
-		for (int y = getSize() - 2; y > 0; y--) {
-			for (int x = 0; x < getSize(); x++) {
-				if (getConstCell({x,y})->getColor() == COLOR_BLUE
-						&& getConstCell({x,y})->hasLink(dir) ) {
-					values->push_back(1.0);
-				} else {
-					values->push_back(0.0);
-				}
-			}
-		}
-	}
-
-}
-
-// Adds a plane to the information state vector
-// we only look at pegs without links
-void Board::addPegPlane(int player, std::vector<double> *values) const {
-
-	if (player == PLAYER_RED) {
-		for (int y = 0; y < getSize(); y++) {
-			for (int x = 1; x < getSize() - 1; x++) {
-				if (getConstCell({x,y})->getColor() == COLOR_RED
-						&& ! getConstCell({x,y})->hasLinks()) {
-					values->push_back(1.0);
-				} else {
-					values->push_back(0.0);
-				}
-			}
-		}
-	} else {
-		/* turn board" 90° clockwise */
-		for (int y = getSize() - 2; y > 0; y--) {
-			for (int x = 0; x < getSize(); x++) {
-				if (getConstCell({x,y})->getColor() == COLOR_BLUE
-						&& ! getConstCell({x,y})->hasLinks() ) {
-					values->push_back(1.0);
-				} else {
-					values->push_back(0.0);
-				}
-			}
-		}
-	}
-
-}
 
 void Board::appendLinkChar(string *s, Tuple c, enum Compass dir, string linkChar) const {
 	if (! coordsOffBoard(c) && getConstCell(c)->hasLink(dir)) {
@@ -616,6 +551,31 @@ void Board::applyAction(int player, Action move) {
 
 }
 
+void Board::updatePegOnTensor(int player, Tuple c) {
+
+	int index;
+
+	if (player == PLAYER_RED) {
+		index = (c.first-1) * getSize() + c.second;
+	} else {
+		index = getSize() * (getSize()-2) + (c.second-1) * getSize() + c.first;
+	}
+	mTensor[PLAYER_RED][index] = 1.0;
+	mTensor[PLAYER_BLUE][index] = 1.0;
+}
+
+void Board::updateLinkOnTensor(int player, Tuple c, int dir) {
+
+	int index;
+
+	if (player == PLAYER_RED) {
+		index = (2 + 2*dir) * getSize() * (getSize()-2) + (c.first-1) * getSize() + c.second;
+	} else {
+		index = (2 + 2*dir + 1) * getSize() * (getSize()-2) + (c.second-1) * getSize() + c.first;
+	}
+	mTensor[PLAYER_RED][index] = 1.0;
+	mTensor[PLAYER_BLUE][index] = 1.0;
+}
 
 void Board::setPegAndLinks(int player, Tuple c) {
 
@@ -626,6 +586,7 @@ void Board::setPegAndLinks(int player, Tuple c) {
 	// set peg
 	Cell *pCell = getCell(c);
 	pCell->setColor(player);
+	updatePegOnTensor(player, c);
 
 	int dir=0;
 	bool newLinks = false;
@@ -652,6 +613,13 @@ void Board::setPegAndLinks(int player, Tuple c) {
 					// we set the link, and set the flag that there is at least one new link
 					pCell->setLink(dir);
 					pTargetCell->setLink(oppDir(dir));
+					// set link on Tensor
+					if (dir < COMPASS_COUNT / 2) {
+						updateLinkOnTensor(player, c, dir);
+					} else {
+						updateLinkOnTensor(player, pCell->getNeighbor(dir), oppDir(dir));
+					}
+
 					newLinks = true;
 
 					// check if cell we link to is linked to START border / END border
