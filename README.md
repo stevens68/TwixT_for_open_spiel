@@ -16,7 +16,7 @@ C++ implementation of the board game [TwixT](https://en.wikipedia.org/wiki/TwixT
     
     examples/mcts_example --game=twixt -player1=mcts --player2=mcts --max_simulations=20000 --rollout_count=4 --verbose=true
     
-    python examples/examply.py --game=twixt\(board_size=12,ansi_color_output=false,discount=0.999\)
+    python examples/example.py --game=twixt\(board_size=12,ansi_color_output=false,discount=0.999\)
 
 
 * board_size must be in [5..24], default=8
