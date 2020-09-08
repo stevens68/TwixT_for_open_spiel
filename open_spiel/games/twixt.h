@@ -20,6 +20,7 @@ class TwixTState: public State {
 		TwixTState& operator=(const TwixTState&) = default;
 
 		int CurrentPlayer() const override { return mCurrentPlayer; };
+
 		std::string ActionToString(int player, Action move) const override {
 			return mBoard.actionToString(move);
 		}
@@ -41,8 +42,12 @@ class TwixTState: public State {
 		};
 
 		std::string InformationStateString(open_spiel::Player player) const override { return HistoryString(); };
-		void InformationStateTensor(int player, std::vector<double> *values) const override {
+		void InformationStateTensor(int player, std::vector<double> * values) const  {
 			mBoard.createTensor(player, values);
+		};
+
+		void InformationStateTensor(int player, absl::Span<float> values) const override {
+			//SpielFatalError("NOT YET IMPL.");
 		};
 
 		std::string ObservationString(int player) const override {
@@ -50,7 +55,7 @@ class TwixTState: public State {
 			return "";
 		};
 
-		void ObservationTensor (int player,	std::vector<double> *values) const override {
+		void ObservationTensor (int player,	std::vector<double> *values) const {
 			SpielFatalError("ObservationTensor is not implemented.");
 		};
 
@@ -92,10 +97,11 @@ class TwixTGame: public Game {
 		double MinUtility() const override { return -1; };
 		double UtilitySum() const override { return 0; };
 		double MaxUtility() const override { return 1; };
-
-		std::shared_ptr<const Game> Clone() const override {
+		/*
+		std::shared_ptr<const Game> Clone() const {
 			return std::shared_ptr<const Game>(new TwixTGame(*this));
 		}
+		*/
 
 		std::vector<int> ObservationTensorShape() const override {
 			return {};

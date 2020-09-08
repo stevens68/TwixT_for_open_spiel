@@ -23,7 +23,7 @@ const double kDefaultDiscount=kMaxDiscount;
 
 // 8 link descriptors store the properties of a link direction
 struct {
-	Tuple offsets; // offset of the target peg, e.g. (2, -1) for ENE
+	Tuple offsets; // offset of the target peg, e.g. (2, 1) for ENE
 	std::vector<std::pair<Tuple, int>> blockingLinks;
 } typedef LinkDescriptor;
 
@@ -183,24 +183,27 @@ class Board {
 //                      red peg at [3,5]: label=D3, action=43
 //                     blue peg at [5,3]: label=F5, action=29
 //
-//     A   B   C   D   E   F   G   H
-//    ------------------------------
-// 1 | 3   2   2   2   2   2   2   3 |
-//   |                               |
-// 2 | 2   2   2   2   2   2   2   2 |
-//   |                               |
-// 3 | 2   2   2   0   2   2   2   2 |
-//   |                               |
-// 4 | 2   2   2   2   2   2   2   2 |
-//   |                               |
-// 5 | 2   2   0   2   2   1   2   2 |
-//   |                               |
-// 6 | 2   2   2   2   2   2   2   2 |
-//   |                               |
-// 7 | 2   2   2   2   2   2   2   2 |
-//   |                               |
-// 8 | 3   2   2   2   2   2   2   3 |
-//     ------------------------------
+//         A   B   C   D   E   F   G   H
+//
+//7    1   3   2   2   2   2   2   2   3
+//            ----------------------
+//6    2   2 | 2   2   2   2   2   2 | 2
+//           |                       |
+//5    3   2 | 2   2   0   2   2   2 | 2
+//           |                       |
+//4    4   2 | 2   2   2   2   2   2 | 2
+//           |                       |
+//3    5   2 | 2   0   2   2   1   2 | 2
+//           |                       |
+//2    6   2 | 2   2   2   2   2   2 | 2
+//           |                       |
+//1    7   2 | 2   2   2   2   2   2 | 2
+//            -----------------------
+//0    8   3   2   2   2   2   2   2   3
+//
+//
+//         0   1   2   3   4   5   6   7     X axis -->
+
 
 //there's a link from C5 to D3:
 //cell[2][3].links = 00000001  (bit 1 set for NNE direction)
