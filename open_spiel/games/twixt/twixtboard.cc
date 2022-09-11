@@ -176,24 +176,8 @@ Board::Board(int size, bool ansiColorOutput) {
 	setSize(size);
 	setAnsiColorOutput(ansiColorOutput);
 
-
 	initializeCells(true);
 	initializeLegalActions();
-	initializeTensor();
-}
-
-void Board::initializeTensor() {
-
-	int planeArea = getSize() * (getSize()-2);
-	// PLAYER_RED: 10 planes: 0.0, 1 plane 0.0
-	// PLAYER_BLUE: 10 planes: 0.0, 1 plane 1.0
-
-	mTensor[PLAYER_RED].resize(kNumPlanes * planeArea);
-	mTensor[PLAYER_BLUE].resize(kNumPlanes * planeArea);
-	for (int i=0; i < planeArea; i++) {
-		mTensor[PLAYER_BLUE][(kNumPlanes-1) * planeArea + i] = 1.0;
-	}
-
 }
 
 void Board::initializeBlockerMap(Tuple c, int dir, LinkDescriptor *ld) {
@@ -239,17 +223,16 @@ void Board::updateResult(int player, Tuple c) {
 
 void Board::initializeCells(bool initBlockerMap) {
 
-	mCell.resize(getSize());
+	mCell.resize(getSize(), vector<Cell>(getSize()));
 	clearBlocker();
 
 	// initialize board with color (empty or overboard)
 	for (int x = 0; x < getSize(); x++) {
-		//adjust dim 2 of board
-		mCell[x].resize(getSize());
 		for (int y = 0; y < getSize(); y++) {
-			// links
+
 			Tuple c = {x, y};
 			Cell *pCell = getCell(c);
+
 			// set color to EMPTY or OVERBOARD
 			if (coordsOffBoard(c)) {
 				pCell->setColor(OVERBOARD);
@@ -269,6 +252,8 @@ void Board::initializeCells(bool initBlockerMap) {
 			}
 		}
 	}
+
+
 }
 
 void Board::initializeCandidates(Tuple c, Cell *pCell, bool initBlockerMap) {
@@ -373,20 +358,6 @@ string Board::toString() const {
 
 	return s;
 }
-
-string Board::actionToString(Action move) const {
-
-	string s = "";
-	s += char(int('A') + move % getSize());
-	s.append(to_string(getSize() - move / getSize()));
-	return s;
-}
-
-void Board::createTensor(int player, vector<double> *values) const {
-
-	*values = mTensor[player];
-}
-
 
 void Board::appendLinkChar(string *s, Tuple c, enum Compass dir, string linkChar) const {
 	if (! coordsOffBoard(c) && getConstCell(c)->hasLink(dir)) {
@@ -551,32 +522,6 @@ void Board::applyAction(int player, Action move) {
 
 }
 
-void Board::updatePegOnTensor(int player, Tuple c) {
-
-	int index;
-
-	if (player == PLAYER_RED) {
-		index = (c.first-1) * getSize() + c.second;
-	} else {
-		index = getSize() * (getSize()-2) + (c.second-1) * getSize() + c.first;
-	}
-	mTensor[PLAYER_RED][index] = 1.0;
-	mTensor[PLAYER_BLUE][index] = 1.0;
-}
-
-void Board::updateLinkOnTensor(int player, Tuple c, int dir) {
-
-	int index;
-
-	if (player == PLAYER_RED) {
-		index = (2 + 2*dir) * getSize() * (getSize()-2) + (c.first-1) * getSize() + c.second;
-	} else {
-		index = (2 + 2*dir + 1) * getSize() * (getSize()-2) + (c.second-1) * getSize() + c.first;
-	}
-	mTensor[PLAYER_RED][index] = 1.0;
-	mTensor[PLAYER_BLUE][index] = 1.0;
-}
-
 void Board::setPegAndLinks(int player, Tuple c) {
 
 	bool linkedToNeutral = false;
@@ -586,13 +531,15 @@ void Board::setPegAndLinks(int player, Tuple c) {
 	// set peg
 	Cell *pCell = getCell(c);
 	pCell->setColor(player);
-	updatePegOnTensor(player, c);
 
 	int dir=0;
 	bool newLinks = false;
 	// check all candidates (neigbors that are empty or have same color)
 	for (int cand=1, dir=0; cand <= pCell->getCandidates(player) ; cand<<=1, dir++) {
 		if (pCell->isCandidate(player, cand)) {
+
+			Tuple n = pCell->getNeighbor(dir);	
+
 			Cell *pTargetCell = getCell(pCell->getNeighbor(dir));
 			if (pTargetCell->getColor() == EMPTY) {
 				// pCell is not a candidate for pTargetCell anymore
@@ -613,12 +560,6 @@ void Board::setPegAndLinks(int player, Tuple c) {
 					// we set the link, and set the flag that there is at least one new link
 					pCell->setLink(dir);
 					pTargetCell->setLink(oppDir(dir));
-					// set link on Tensor
-					if (dir < COMPASS_COUNT / 2) {
-						updateLinkOnTensor(player, c, dir);
-					} else {
-						updateLinkOnTensor(player, pCell->getNeighbor(dir), oppDir(dir));
-					}
 
 					newLinks = true;
 

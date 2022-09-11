@@ -27,7 +27,7 @@ struct {
 	std::vector<std::pair<Tuple, int>> blockingLinks;
 } typedef LinkDescriptor;
 
-const int kNumPlanes=11;  // 2 * (1 for unlinked pegs + 4 for links) + 1 for player to move
+const int kNumPlanes=10;  // 2 * (1 for unlinked pegs + 4 for links) 
 
 enum Result {
   OPEN,
@@ -77,12 +77,8 @@ class Board {
 		bool mAnsiColorOutput;
 		std::vector<Action> mLegalActions[PLAYER_COUNT];
 		int mLegalActionIndex[PLAYER_COUNT][kMaxBoardSize*kMaxBoardSize];
-		std::vector<double> mTensor[PLAYER_COUNT];
-
-
 
 		void setSize(int size) { mSize = size; };
-		int getSize() const { return mSize; };
 
 		bool getAnsiColorOutput() const { return mAnsiColorOutput; };
 		void setAnsiColorOutput (bool ansiColorOutput) { mAnsiColorOutput = ansiColorOutput; };
@@ -97,8 +93,6 @@ class Board {
 
 		void incMoveCounter() {	mMoveCounter++; };
 
-		const Cell* getConstCell(Tuple c) const { return  &(mCell[c.first][c.second]); };
-		Cell* getCell(Tuple c) { return  &(mCell[c.first][c.second]); };
 
 		bool hasLegalActions(int player) const { return mLegalActions[player].size() > 0; };
 		void removeLegalAction(int player, Action action) {
@@ -127,7 +121,6 @@ class Board {
 		void initializeCells(bool);
 		void initializeCandidates(Tuple, Cell *, bool);
 		void initializeBlockerMap(Tuple, int, LinkDescriptor *);
-		void initializeTensor();
 
 		void initializeLegalActions();
 
@@ -156,15 +149,16 @@ class Board {
 		Board() {};
 		Board(int, bool);
 
-		std::string actionToString(Action) const;
+		//std::string actionToString(Action) const;
+		int getSize() const { return mSize; };
 		std::string toString() const;
 		int getResult() const {	return mResult; };
 		int getMoveCounter() const { return mMoveCounter; };
-		void createTensor(int, std::vector<double> *) const;
-		void updatePegOnTensor(int, Tuple);
-		void updateLinkOnTensor(int, Tuple, int);
 		std::vector<Action> getLegalActions(int player) const { return mLegalActions[player]; };
 		void applyAction(int, Action);
+		Cell* getCell(Tuple c) {  return  &mCell[c.first][c.second]; };
+		const Cell* getConstCell(Tuple c) const { return  &mCell[c.first][c.second]; };
+
 };
 
 // twixt board:

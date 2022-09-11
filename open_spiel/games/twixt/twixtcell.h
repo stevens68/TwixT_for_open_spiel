@@ -48,13 +48,13 @@ class Cell {
 		bool mLinkedToBorder[PLAYER_COUNT][BORDER_COUNT] = { {false, false}, {false, false} };
 
 	public:
-		int getColor() const { return mColor; };
+		int getColor() const { 	return mColor; };
 		void setColor(int color) { mColor = color; };
 
 		void setLink(int dir) { mLinks |= (1UL << dir); };
 		int getLinks() const { return mLinks; };
 		bool isLinked(int cand) const { return mLinks & cand; };
-		bool hasLink(int dir) const { return mLinks & (1UL << dir); };
+		bool hasLink(int dir) const {   return mLinks & (1UL << dir); };
 		bool hasLinks() const { return mLinks > 0; };
 
 		int getCandidates(int player) { return mCandidates[player]; }
@@ -70,6 +70,7 @@ class Cell {
 		void setNeighbor(int dir, Tuple c) { mNeighbors[dir]=c; };
 
 		void setLinkedToBorder(int player, int border) { mLinkedToBorder[player][border] = true; };
+
 	    bool isLinkedToBorder(int player, int border) const { return mLinkedToBorder[player][border]; };
 };
 
