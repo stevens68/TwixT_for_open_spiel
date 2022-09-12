@@ -43,6 +43,6 @@ add_test(twixt_test twixt_test)
 * player 0 (X, red) has the top/bottom endlines, player 1 (O, blue) has the left/right endlines.
 * If a player has no more legal moves left - when it's his turn - the game is a draw.
 * The swap rule is implemented like this: 
-  * player 1 swaps by choosing the same square as player 1.
+  * player 1 swaps by choosing the same square as player 0.
   * the red peg is removed and a blue peg is positioned 90° clockwise instead.
    
