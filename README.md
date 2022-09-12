@@ -15,6 +15,7 @@ twixt.h
 twixt/twixtboard.cc
 twixt/twixtboard.h
 twixt/twixtcell.h 
+```
 * add a test section
 ```
 add_executable(twixt_test twixt_test.cc ${OPEN_SPIEL_OBJECTS}
