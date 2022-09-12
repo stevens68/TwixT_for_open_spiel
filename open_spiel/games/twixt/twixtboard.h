@@ -162,14 +162,14 @@ class Board {
 };
 
 // twixt board:
-// * the board has boardSize x boardSize cells
+// * the board has mSize x mSize cells
 // * the x-axis (cols) points from left to right,
 // * the y axis (rows) points from bottom to top
 // * moves are labeled by col / row, e.g.  C3, F4, D2, ... (top row=1, left col=A)
 // * actions are indexed from 0 to boardSize^2
 // * coordinates to action:  [x,y] => move: y * boardSize + x
-// * player1: 0, X, top/bottom, red
-// * player2: 1, O, left/right, blue
+// * player0: X, top/bottom, red
+// * player1: O, left/right, blue
 // * empty cell = 2 (EMPTY)
 // * corner cell = 3 (OVERBOARD)
 //

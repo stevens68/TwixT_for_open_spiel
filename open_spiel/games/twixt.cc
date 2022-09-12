@@ -20,9 +20,11 @@ namespace {
 // Facts about the game.
 const GameType kGameType {
 		/*short_name=*/"twixt",
-		/*long_name=*/"TwixT", GameType::Dynamics::kSequential,
+		/*long_name=*/"TwixT", 
+		GameType::Dynamics::kSequential,
 		GameType::ChanceMode::kDeterministic,
-		GameType::Information::kPerfectInformation, GameType::Utility::kZeroSum,
+		GameType::Information::kPerfectInformation, 
+		GameType::Utility::kZeroSum,
 		GameType::RewardModel::kTerminal,
 		/*max_num_players=*/2,
 		/*min_num_players=*/2,
@@ -58,48 +60,50 @@ TwixTState::TwixTState(std::shared_ptr<const Game> game) :   State(game) {
 
 void TwixTState::ObservationTensor (open_spiel::Player player, absl::Span<float> values) const {
 
-  SPIEL_CHECK_GE(player, 0);
-  SPIEL_CHECK_LT(player, Player::PLAYER_COUNT);
-  
-  // 10 2-dim boards: 
-  int size = mBoard.getSize();
-  TensorView<3> view(values, {2 * (1 + 4), size-2, size}, true);
+	SPIEL_CHECK_GE(player, 0);
+	SPIEL_CHECK_LT(player, Player::PLAYER_COUNT);
 
-  // player 0: looking at red pegs/links from [1,0] B8 to [6,7] G1 only (ignoring blue end lines)
-  // planes: 0: pegs, 1: NNE-links, 2: ENE-links, 3: ESE-links, 4: SSE-links
-  for (int c = 1; c < size-1; c++) {
-    for (int r = 0; r < size; r++) {
-		Tuple t = { c, r };
-		const Cell *pCell = mBoard.getConstCell(t); 
-		if (pCell->getColor() == Player::PLAYER_RED) {
-			view[{0,c-1,r}] = 1.0;
-			if (pCell->hasLinks()) {
-				if (pCell->hasLink(Compass::NNE)) { view[{1,c-1,r}] = 1.0; };
-				if (pCell->hasLink(Compass::ENE)) { view[{2,c-1,r}] = 1.0; };
-				if (pCell->hasLink(Compass::ESE)) { view[{3,c-1,r}] = 1.0; };
-				if (pCell->hasLink(Compass::SSE)) { view[{4,c-1,r}] = 1.0; };
+	// 10 2-dim boards: 
+	int size = mBoard.getSize();
+	TensorView<3> view(values, {2 * (1 + 4), size-2, size}, true);
+
+	// There are 10 planes: 
+	// current player: plane 0: pegs, 1: NNE-links, 2: ENE-links, 3: ESE-links, 4: SSE-links
+	// opponent: plane 5: pegs, 6: NNE-links, 7: ENE-links, 8: ESE-links, 9: SSE-links
+	// player 0: we ignore blue end lines, i.e. we look only at cells in column #1 to column #size-1
+	// player 1: we ignore red end lines, i.e. we look only at cells in row #1 to row #size-1
+	// player 1's coords are turned 90 deg clockwise to fit the shape (size-2, size)
+
+	int redOffset = Player::PLAYER_RED == CurrentPlayer() ? 0 : 5;
+	int blueOffset = 5 - redOffset;
+
+	for (int c = 0; c < size; c++) {
+		for (int r = 0; r < size; r++) {
+			Tuple t = { c, r };
+			const Cell *pCell = mBoard.getConstCell(t); 
+			int color = pCell->getColor();
+			if (color == Player::PLAYER_RED) {
+				// no turn
+				view[{0+redOffset, c-1, r}] = 1.0;
+				if (pCell->hasLinks()) {
+					if (pCell->hasLink(Compass::NNE)) { view[{1+redOffset, c-1, r}] = 1.0; };
+					if (pCell->hasLink(Compass::ENE)) { view[{2+redOffset, c-1, r}] = 1.0; };
+					if (pCell->hasLink(Compass::ESE)) { view[{3+redOffset, c-1, r}] = 1.0; };
+					if (pCell->hasLink(Compass::SSE)) { view[{4+redOffset, c-1, r}] = 1.0; };
+				}
+			} else if (color == Player::PLAYER_BLUE) {
+				// 90 deg clockwise turn
+				view[{0+blueOffset, r-1, size-c-1}] = 1.0;
+				if (pCell->hasLinks()) {
+					if (pCell->hasLink(Compass::NNE)) { view[{1+blueOffset, r-1, size-c-1}] = 1.0; };
+					if (pCell->hasLink(Compass::ENE)) { view[{2+blueOffset, r-1, size-c-1}] = 1.0; };
+					if (pCell->hasLink(Compass::ESE)) { view[{3+blueOffset, r-1, size-c-1}] = 1.0; };
+					if (pCell->hasLink(Compass::SSE)) { view[{4+blueOffset, r-1, size-c-1}] = 1.0; };
+				}
 			}
 		}
-    }
-  }
-  // player 1: looking at blue pegs/links from [0,1] A7 to [7,6] H2 only (ignoring red end lines)
-  // planes: 5: pegs, 6: NNE-links, 7: ENE-links, 8: ESE-links, 9: SSE-links
-  int offset = 5;
-  for (int c = 0; c < size; c++) {
-    for (int r = 1; r < size-1; r++) {
-		Tuple t = { c, r };
-		const Cell *pCell = mBoard.getConstCell(t); 
-		if (pCell->getColor() == Player::PLAYER_BLUE) {
-			view[{0+offset,r-1,c}] = 1.0;
-			if (pCell->hasLinks()) {
-				if (pCell->hasLink(Compass::NNE)) { view[{1+offset,r-1,c}] = 1.0; };
-				if (pCell->hasLink(Compass::ENE)) { view[{2+offset,r-1,c}] = 1.0; };
-				if (pCell->hasLink(Compass::ESE)) { view[{3+offset,r-1,c}] = 1.0; };
-				if (pCell->hasLink(Compass::SSE)) { view[{4+offset,r-1,c}] = 1.0; };
-			}
-		}
-    }
-  }
+	}
+
 
 };
 
