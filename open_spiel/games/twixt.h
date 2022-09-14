@@ -70,6 +70,7 @@ class TwixTState: public State {
 		void UndoAction(open_spiel::Player, Action) override {};
 
 		std::vector<Action> LegalActions() const override {
+  		    if (IsTerminal()) return {};
 			return mBoard.getLegalActions(CurrentPlayer());
 		};
 
