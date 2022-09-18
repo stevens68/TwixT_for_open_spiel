@@ -7,8 +7,21 @@ C++ implementation of the board game [TwixT](https://en.wikipedia.org/wiki/TwixT
 ## Installation
 
 * Clone deepmind's open_spiel [repository](https://github.com/deepmind/open_spiel) and follow the installation instructions
-* Copy the games/twixt* files into the games folder of your open_spiel installation
-* Edit games/CMakeLists.txt and add twixt.cc, twixt.h, twixt/twixtboard.cc, twixt/twixtboard.h, twixt/twixtcell.h
+* Copy the `TwixT_for_open_spiel/open_spiel/games/twixt*` files into `open_spiel/open_spiel/games`
+* Edit `open_spiel/open_spiel/games/CMakeLists.txt` and add the following files to 
+```
+twixt.cc
+twixt.h
+twixt/twixtboard.cc
+twixt/twixtboard.h
+twixt/twixtcell.h 
+```
+* add a test section
+```
+add_executable(twixt_test twixt_test.cc ${OPEN_SPIEL_OBJECTS}
+               $<TARGET_OBJECTS:tests>)
+add_test(twixt_test twixt_test)
+```
 * Build the targets as described [here](https://github.com/deepmind/open_spiel/blob/master/docs/install.md)
 
 ## Examples
@@ -27,9 +40,9 @@ C++ implementation of the board game [TwixT](https://en.wikipedia.org/wiki/TwixT
 
 ## Rules
 * this is a paper-and-pencil variant of TwixT without link removal and without crossing of own links. 
-* player 1 (X, red) plays from top to bottom, player 2 (O, blue) plays from left to right.
+* player 0 (X, red) has the top/bottom endlines, player 1 (O, blue) has the left/right endlines.
 * If a player has no more legal moves left - when it's his turn - the game is a draw.
-* The pie rule (a.k.a. swap rule) is implemented like this: 
-  * player 2 decides to swap by choosing the same square as player 1.
+* The swap rule is implemented like this: 
+  * player 1 swaps by choosing the same square as player 0.
   * the red peg is removed and a blue peg is positioned 90° clockwise instead.
    
