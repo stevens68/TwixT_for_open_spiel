@@ -27,22 +27,20 @@ struct {
 	std::vector<std::pair<Tuple, int>> blockingLinks;
 } typedef LinkDescriptor;
 
-const int kNumPlanes=11;  // 2 * (1 for unlinked pegs + 4 for links) + 1 for player to move
+const int kNumPlanes=10;  // 2 * (1 for unlinked pegs + 4 for links) 
 
 enum Result {
-  OPEN,
-  RED_WON,
-  BLUE_WON,
-  DRAW,
-  RESULT_COUNT
+  kOpen,
+  kRedWin,
+  kBlueWin,
+  kDraw
 };
 
 enum Color {
-	COLOR_RED,
-	COLOR_BLUE,
-	EMPTY,
-	OVERBOARD,
-	COLOR_COUNT
+	kRedColor,
+	kBlueColor,
+	kEmpty,
+	kOffBoard
 };
 
 // blockerMap stores set of blocking links for each link
@@ -71,18 +69,14 @@ class Board {
 		int mMoveCounter = 0;
 		bool mSwapped = false;
 		int mMoveOne;
-		int mResult = Result::OPEN;
+		int mResult = kOpen;
 		std::vector<std::vector<Cell>> mCell;
 		int mSize;  // length of a side of the board
 		bool mAnsiColorOutput;
-		std::vector<Action> mLegalActions[PLAYER_COUNT];
-		int mLegalActionIndex[PLAYER_COUNT][kMaxBoardSize*kMaxBoardSize];
-		std::vector<double> mTensor[PLAYER_COUNT];
-
-
+		std::vector<Action> mLegalActions[kMaxPlayer];
+		int mLegalActionIndex[kMaxPlayer][kMaxBoardSize*kMaxBoardSize];
 
 		void setSize(int size) { mSize = size; };
-		int getSize() const { return mSize; };
 
 		bool getAnsiColorOutput() const { return mAnsiColorOutput; };
 		void setAnsiColorOutput (bool ansiColorOutput) { mAnsiColorOutput = ansiColorOutput; };
@@ -97,8 +91,6 @@ class Board {
 
 		void incMoveCounter() {	mMoveCounter++; };
 
-		const Cell* getConstCell(Tuple c) const { return  &(mCell[c.first][c.second]); };
-		Cell* getCell(Tuple c) { return  &(mCell[c.first][c.second]); };
 
 		bool hasLegalActions(int player) const { return mLegalActions[player].size() > 0; };
 		void removeLegalAction(int player, Action action) {
@@ -127,7 +119,6 @@ class Board {
 		void initializeCells(bool);
 		void initializeCandidates(Tuple, Cell *, bool);
 		void initializeBlockerMap(Tuple, int, LinkDescriptor *);
-		void initializeTensor();
 
 		void initializeLegalActions();
 
@@ -156,26 +147,27 @@ class Board {
 		Board() {};
 		Board(int, bool);
 
-		std::string actionToString(Action) const;
+		//std::string actionToString(Action) const;
+		int getSize() const { return mSize; };
 		std::string toString() const;
 		int getResult() const {	return mResult; };
 		int getMoveCounter() const { return mMoveCounter; };
-		void createTensor(int, std::vector<double> *) const;
-		void updatePegOnTensor(int, Tuple);
-		void updateLinkOnTensor(int, Tuple, int);
 		std::vector<Action> getLegalActions(int player) const { return mLegalActions[player]; };
 		void applyAction(int, Action);
+		Cell* getCell(Tuple c) {  return  &mCell[c.first][c.second]; };
+		const Cell* getConstCell(Tuple c) const { return  &mCell[c.first][c.second]; };
+
 };
 
 // twixt board:
-// * the board has boardSize x boardSize cells
+// * the board has mSize x mSize cells
 // * the x-axis (cols) points from left to right,
 // * the y axis (rows) points from bottom to top
 // * moves are labeled by col / row, e.g.  C3, F4, D2, ... (top row=1, left col=A)
 // * actions are indexed from 0 to boardSize^2
 // * coordinates to action:  [x,y] => move: y * boardSize + x
-// * player1: 0, X, top/bottom, red
-// * player2: 1, O, left/right, blue
+// * player0: X, top/bottom, red
+// * player1: O, left/right, blue
 // * empty cell = 2 (EMPTY)
 // * corner cell = 3 (OVERBOARD)
 //
