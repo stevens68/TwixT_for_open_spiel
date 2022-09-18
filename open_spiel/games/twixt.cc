@@ -61,7 +61,7 @@ TwixTState::TwixTState(std::shared_ptr<const Game> game) :   State(game) {
 void TwixTState::ObservationTensor (open_spiel::Player player, absl::Span<float> values) const {
 
 	SPIEL_CHECK_GE(player, 0);
-	SPIEL_CHECK_LT(player, Player::PLAYER_COUNT);
+	SPIEL_CHECK_LT(player, kMaxPlayer);
 
 	// 10 2-dim boards: 
 	int size = mBoard.getSize();
@@ -74,31 +74,31 @@ void TwixTState::ObservationTensor (open_spiel::Player player, absl::Span<float>
 	// player 1: we ignore red end lines, i.e. we look only at cells in row #1 to row #size-1
 	// player 1's coords are turned 90 deg clockwise to fit the shape (size-2, size)
 
-	int redOffset = Player::PLAYER_RED == CurrentPlayer() ? 0 : 5;
-	int blueOffset = 5 - redOffset;
+	int redOffset = 0;
+	int blueOffset = 5;
 
 	for (int c = 0; c < size; c++) {
 		for (int r = 0; r < size; r++) {
 			Tuple t = { c, r };
 			const Cell *pCell = mBoard.getConstCell(t); 
 			int color = pCell->getColor();
-			if (color == Player::PLAYER_RED) {
+			if (color == kRedColor) {
 				// no turn
 				view[{0+redOffset, c-1, r}] = 1.0;
 				if (pCell->hasLinks()) {
-					if (pCell->hasLink(Compass::NNE)) { view[{1+redOffset, c-1, r}] = 1.0; };
-					if (pCell->hasLink(Compass::ENE)) { view[{2+redOffset, c-1, r}] = 1.0; };
-					if (pCell->hasLink(Compass::ESE)) { view[{3+redOffset, c-1, r}] = 1.0; };
-					if (pCell->hasLink(Compass::SSE)) { view[{4+redOffset, c-1, r}] = 1.0; };
+					if (pCell->hasLink(kNNE)) { view[{1+redOffset, c-1, r}] = 1.0; };
+					if (pCell->hasLink(kENE)) { view[{2+redOffset, c-1, r}] = 1.0; };
+					if (pCell->hasLink(kESE)) { view[{3+redOffset, c-1, r}] = 1.0; };
+					if (pCell->hasLink(kSSE)) { view[{4+redOffset, c-1, r}] = 1.0; };
 				}
-			} else if (color == Player::PLAYER_BLUE) {
+			} else if (color == kBlueColor) {
 				// 90 deg clockwise turn
 				view[{0+blueOffset, r-1, size-c-1}] = 1.0;
 				if (pCell->hasLinks()) {
-					if (pCell->hasLink(Compass::NNE)) { view[{1+blueOffset, r-1, size-c-1}] = 1.0; };
-					if (pCell->hasLink(Compass::ENE)) { view[{2+blueOffset, r-1, size-c-1}] = 1.0; };
-					if (pCell->hasLink(Compass::ESE)) { view[{3+blueOffset, r-1, size-c-1}] = 1.0; };
-					if (pCell->hasLink(Compass::SSE)) { view[{4+blueOffset, r-1, size-c-1}] = 1.0; };
+					if (pCell->hasLink(kNNE)) { view[{1+blueOffset, r-1, size-c-1}] = 1.0; };
+					if (pCell->hasLink(kENE)) { view[{2+blueOffset, r-1, size-c-1}] = 1.0; };
+					if (pCell->hasLink(kESE)) { view[{3+blueOffset, r-1, size-c-1}] = 1.0; };
+					if (pCell->hasLink(kSSE)) { view[{4+blueOffset, r-1, size-c-1}] = 1.0; };
 				}
 			}
 		}

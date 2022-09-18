@@ -35,29 +35,29 @@ class TwixTState: public State {
 
 		bool IsTerminal() const override {
 			int result = mBoard.getResult();
-			return (result == Result::RED_WON || result == Result::BLUE_WON || result == Result::DRAW);
+			return (result == kRedWin || result == kBlueWin || result == kDraw);
 		};
 
 		std::vector<double> Returns() const override {
 			double reward;
 			int result = mBoard.getResult();
-			if (result == Result::OPEN || result == Result::DRAW) { return {0.0, 0.0}; }
+			if (result == kOpen || result == kDraw) { return {0.0, 0.0}; }
 			else {
 				reward = pow(mDiscount, mBoard.getMoveCounter());
-				if (result == Result::RED_WON) { return {reward, -reward}; }
+				if (result == kRedWin) { return {reward, -reward}; }
 				else { return {-reward, reward}; }
 			}
 		};
 
 		std::string InformationStateString(open_spiel::Player player) const override { 
  			SPIEL_CHECK_GE(player, 0);
-  			SPIEL_CHECK_LT(player, Player::PLAYER_COUNT);			
+  			SPIEL_CHECK_LT(player, kMaxPlayer);			
 			return ToString(); 
 		};
 
 		std::string ObservationString(open_spiel::Player player) const override {
  			SPIEL_CHECK_GE(player, 0);
-  			SPIEL_CHECK_LT(player, Player::PLAYER_COUNT);			
+  			SPIEL_CHECK_LT(player, kMaxPlayer);			
 			return ToString();
 		};
 
@@ -77,12 +77,12 @@ class TwixTState: public State {
 	protected:
 		void DoApplyAction(Action move) override {
 			mBoard.applyAction(CurrentPlayer(), move);
-			if (mBoard.getResult() == Result::OPEN) { setCurrentPlayer(1 - CurrentPlayer()); }
+			if (mBoard.getResult() == kOpen) { setCurrentPlayer(1 - CurrentPlayer()); }
 			else { setCurrentPlayer(kTerminalPlayerId); }
 		};
 
 	private:
-		int mCurrentPlayer = PLAYER_RED;  // PLAYER_RED=0, PLAYER_BLUE=1
+		int mCurrentPlayer = kRedPlayer;  
 		Board mBoard;
 		double mDiscount = kDefaultDiscount;
 
@@ -102,17 +102,20 @@ class TwixTGame: public Game {
 
 		int NumDistinctActions() const override { return mBoardSize*mBoardSize; };
 
-		int NumPlayers() const override { return PLAYER_COUNT; };
-		double MinUtility() const override { return -1; };
-		double UtilitySum() const override { return 0; };
-		double MaxUtility() const override { return 1; };
+		int NumPlayers() const override { return kMaxPlayer; };
+		double MinUtility() const override { return -1.0; };
+		double UtilitySum() const override { return 0.0; };
+		double MaxUtility() const override { return 1.0; };
 
 		std::vector<int> ObservationTensorShape() const override {
 			static std::vector<int> shape{ kNumPlanes, mBoardSize-2, mBoardSize };
 			return shape;
 		}
 
-		int MaxGameLength() const { return kMaxBoardSize*kMaxBoardSize - 4 + 1; }
+		int MaxGameLength() const { 
+			// square - 4 corners + swap move
+			return mBoardSize*mBoardSize - 4 + 1; 
+		}
 		bool getAnsiColorOutput() const { return mAnsiColorOutput; }
 		int getBoardSize() const { return mBoardSize; }
 		double getDiscount() const { return mDiscount; }

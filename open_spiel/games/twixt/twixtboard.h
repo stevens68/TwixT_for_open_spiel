@@ -30,19 +30,17 @@ struct {
 const int kNumPlanes=10;  // 2 * (1 for unlinked pegs + 4 for links) 
 
 enum Result {
-  OPEN,
-  RED_WON,
-  BLUE_WON,
-  DRAW,
-  RESULT_COUNT
+  kOpen,
+  kRedWin,
+  kBlueWin,
+  kDraw
 };
 
 enum Color {
-	COLOR_RED,
-	COLOR_BLUE,
-	EMPTY,
-	OVERBOARD,
-	COLOR_COUNT
+	kRedColor,
+	kBlueColor,
+	kEmpty,
+	kOffBoard
 };
 
 // blockerMap stores set of blocking links for each link
@@ -71,12 +69,12 @@ class Board {
 		int mMoveCounter = 0;
 		bool mSwapped = false;
 		int mMoveOne;
-		int mResult = Result::OPEN;
+		int mResult = kOpen;
 		std::vector<std::vector<Cell>> mCell;
 		int mSize;  // length of a side of the board
 		bool mAnsiColorOutput;
-		std::vector<Action> mLegalActions[PLAYER_COUNT];
-		int mLegalActionIndex[PLAYER_COUNT][kMaxBoardSize*kMaxBoardSize];
+		std::vector<Action> mLegalActions[kMaxPlayer];
+		int mLegalActionIndex[kMaxPlayer][kMaxBoardSize*kMaxBoardSize];
 
 		void setSize(int size) { mSize = size; };
 
