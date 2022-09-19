@@ -27,7 +27,10 @@ struct {
 	std::vector<std::pair<Tuple, int>> blockingLinks;
 } typedef LinkDescriptor;
 
-const int kNumPlanes=10;  // 2 * (1 for unlinked pegs + 4 for links) 
+//   2 planes for the pegs (1 plane per color) 
+// + 4 planes for the links to eastern directions (both colors) 
+// + 1 plane for the current player (all 0.0 or all 1.0)
+const int kNumPlanes=7;  
 
 enum Result {
   kOpen,
@@ -160,7 +163,7 @@ class Board {
 };
 
 // twixt board:
-// * the board has mSize x mSize cells
+// * the board has mBoardSize x mBoardSize cells
 // * the x-axis (cols) points from left to right,
 // * the y axis (rows) points from bottom to top
 // * moves are labeled by col / row, e.g.  C3, F4, D2, ... (top row=1, left col=A)
@@ -169,7 +172,7 @@ class Board {
 // * player0: X, top/bottom, red
 // * player1: O, left/right, blue
 // * empty cell = 2 (EMPTY)
-// * corner cell = 3 (OVERBOARD)
+// * corner cell = 3 (OFFBOARD)
 //
 // example 8 x 8 board: red peg at [2,3]: label=C5, action=26
 //                      red peg at [3,5]: label=D3, action=43
@@ -194,7 +197,7 @@ class Board {
 // 8 | 3   2   2   2   2   2   2   3 |
 //     ------------------------------
 
-//there's a link from C5 to D3:
+//there's a red link from C5 to D3:
 //cell[2][3].links = 00000001  (bit 1 set for NNE direction)
 //cell[3][5].links = 00010000  (bit 5 set for SSW direction)
 

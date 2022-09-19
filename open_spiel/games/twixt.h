@@ -108,7 +108,7 @@ class TwixTGame: public Game {
 		double MaxUtility() const override { return 1.0; };
 
 		std::vector<int> ObservationTensorShape() const override {
-			static std::vector<int> shape{ kNumPlanes, mBoardSize-2, mBoardSize };
+			static std::vector<int> shape{ kNumPlanes, mBoardSize, mBoardSize };
 			return shape;
 		}
 
