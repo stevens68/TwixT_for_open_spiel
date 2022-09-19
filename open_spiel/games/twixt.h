@@ -2,7 +2,7 @@
 #ifndef THIRD_PARTY_OPEN_SPIEL_GAMES_TWIXT_H_
 #define THIRD_PARTY_OPEN_SPIEL_GAMES_TWIXT_H_
 
-#include "open_spiel/spiel.h"
+#include "open_spiel/games/twixt/twixtcell.h"
 #include "open_spiel/games/twixt/twixtboard.h"
 #include <iostream>
 #include <string>
@@ -22,14 +22,7 @@ class TwixTState: public State {
 
 		open_spiel::Player CurrentPlayer() const override { return mCurrentPlayer; };
 
-		std::string ActionToString(open_spiel::Player player, Action move) const override
-		{
-			std::string s = "";
-			s += char(int('A') + move % mBoard.getSize());
-			s.append(std::to_string(mBoard.getSize() - move / mBoard.getSize()));
-			return s;
-
-		};
+		std::string ActionToString(open_spiel::Player player, Action action) const override;
 
 		std::string ToString() const override { return mBoard.toString(); };
 
@@ -51,13 +44,13 @@ class TwixTState: public State {
 
 		std::string InformationStateString(open_spiel::Player player) const override { 
  			SPIEL_CHECK_GE(player, 0);
-  			SPIEL_CHECK_LT(player, kMaxPlayer);			
+  			SPIEL_CHECK_LT(player, kNumPlayers);			
 			return ToString(); 
 		};
 
 		std::string ObservationString(open_spiel::Player player) const override {
  			SPIEL_CHECK_GE(player, 0);
-  			SPIEL_CHECK_LT(player, kMaxPlayer);			
+  			SPIEL_CHECK_LT(player, kNumPlayers);			
 			return ToString();
 		};
 
@@ -87,6 +80,7 @@ class TwixTState: public State {
 		double mDiscount = kDefaultDiscount;
 
 		void setCurrentPlayer(int player) { mCurrentPlayer = player; }
+		void setPegAndLinksOnTensor(absl::Span<float>, const Cell *, int, int, int) const;
 
 };
 
@@ -100,15 +94,15 @@ class TwixTGame: public Game {
 			return std::unique_ptr<State>(new TwixTState(shared_from_this()));
 		};
 
-		int NumDistinctActions() const override { return mBoardSize*mBoardSize; };
+		int NumDistinctActions() const override { return mBoardSize*(mBoardSize-2); };
 
-		int NumPlayers() const override { return kMaxPlayer; };
+		int NumPlayers() const override { return kNumPlayers; };
 		double MinUtility() const override { return -1.0; };
 		double UtilitySum() const override { return 0.0; };
 		double MaxUtility() const override { return 1.0; };
 
 		std::vector<int> ObservationTensorShape() const override {
-			static std::vector<int> shape{ kNumPlanes, mBoardSize-2, mBoardSize };
+			static std::vector<int> shape{ kNumPlanes, mBoardSize, mBoardSize-2 };
 			return shape;
 		}
 

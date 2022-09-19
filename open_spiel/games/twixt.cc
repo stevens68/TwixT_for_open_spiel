@@ -58,54 +58,73 @@ TwixTState::TwixTState(std::shared_ptr<const Game> game) :   State(game) {
 
 }
 
+std::string TwixTState::ActionToString(open_spiel::Player player, Action action) const
+{
+	Move move = mBoard.actionToMove(player, action);	
+	std::string s = (player == kRedPlayer) ? "x" : "o";
+	s += char(int('a') + move.first);
+	s.append(std::to_string(mBoard.getSize() - move.second));
+	return s;
+
+};
+
+void TwixTState::setPegAndLinksOnTensor(absl::Span<float> values, const Cell *pCell, int offset, int col, int row) const {
+	// we flip col/row here for better output in playthrough file 
+	TensorView<3> view(values, {kNumPlanes, mBoard.getSize(), mBoard.getSize()-2}, false);
+	view[{0 + offset, row, col}] = 1.0;
+	if (pCell->hasLinks()) {
+		if (pCell->hasLink(kNNE)) { view[{1 + offset, row, col}] = 1.0; };
+		if (pCell->hasLink(kENE)) { view[{2 + offset, row, col}] = 1.0; };
+		if (pCell->hasLink(kESE)) { view[{3 + offset, row, col}] = 1.0; };
+		if (pCell->hasLink(kSSE)) { view[{4 + offset, row, col}] = 1.0; };
+	}
+}
+
+
 void TwixTState::ObservationTensor (open_spiel::Player player, absl::Span<float> values) const {
 
 	SPIEL_CHECK_GE(player, 0);
-	SPIEL_CHECK_LT(player, kMaxPlayer);
+	SPIEL_CHECK_LT(player, kNumPlayers);
 
-	// 10 2-dim boards: 
 	int size = mBoard.getSize();
-	TensorView<3> view(values, {2 * (1 + 4), size-2, size}, true);
 
-	// There are 10 planes: 
-	// current player: plane 0: pegs, 1: NNE-links, 2: ENE-links, 3: ESE-links, 4: SSE-links
-	// opponent: plane 5: pegs, 6: NNE-links, 7: ENE-links, 8: ESE-links, 9: SSE-links
-	// player 0: we ignore blue end lines, i.e. we look only at cells in column #1 to column #size-1
-	// player 1: we ignore red end lines, i.e. we look only at cells in row #1 to row #size-1
-	// player 1's coords are turned 90 deg clockwise to fit the shape (size-2, size)
+	// 10 planes of size boardSize x (boardSize-2): 
+	// each plane excludes the endlines of the opponent
+	// planes 0-4 are for the current player from current player's perspective)
+	// planes 5-9 are for the opponent from current player's perspective 
+	// plane 0/5: pegs, 
+	// plane 1/6: NNE-links, 
+	// plane 2/7: ENE-links, 
+	// plane 3/8: ESE-links, 
+	// plane 4/9: SSE-links
 
-	int redOffset = 0;
-	int blueOffset = 5;
+	TensorView<3> view(values, {kNumPlanes, mBoard.getSize(), mBoard.getSize()-2}, true);
 
 	for (int c = 0; c < size; c++) {
 		for (int r = 0; r < size; r++) {
-			Tuple t = { c, r };
-			const Cell *pCell = mBoard.getConstCell(t); 
+			Move move = { c, r };
+			const Cell *pCell = mBoard.getConstCell(move); 
 			int color = pCell->getColor();
-			if (color == kRedColor) {
-				// no turn
-				view[{0+redOffset, c-1, r}] = 1.0;
-				if (pCell->hasLinks()) {
-					if (pCell->hasLink(kNNE)) { view[{1+redOffset, c-1, r}] = 1.0; };
-					if (pCell->hasLink(kENE)) { view[{2+redOffset, c-1, r}] = 1.0; };
-					if (pCell->hasLink(kESE)) { view[{3+redOffset, c-1, r}] = 1.0; };
-					if (pCell->hasLink(kSSE)) { view[{4+redOffset, c-1, r}] = 1.0; };
+			if (player == kRedPlayer) {
+				if (color == kRedColor) {
+					// no turn
+					setPegAndLinksOnTensor(values, pCell, 0, c-1, r);
+				} else if (color == kBlueColor) {
+					// 90 degr turn (blue player sits left side of red player)
+					setPegAndLinksOnTensor(values, pCell, 5, size-r-2, c);
 				}
-			} else if (color == kBlueColor) {
-				// 90 deg clockwise turn
-				view[{0+blueOffset, r-1, size-c-1}] = 1.0;
-				if (pCell->hasLinks()) {
-					if (pCell->hasLink(kNNE)) { view[{1+blueOffset, r-1, size-c-1}] = 1.0; };
-					if (pCell->hasLink(kENE)) { view[{2+blueOffset, r-1, size-c-1}] = 1.0; };
-					if (pCell->hasLink(kESE)) { view[{3+blueOffset, r-1, size-c-1}] = 1.0; };
-					if (pCell->hasLink(kSSE)) { view[{4+blueOffset, r-1, size-c-1}] = 1.0; };
+			} else if (player == kBluePlayer) {
+				if (color == kBlueColor) {
+					// 90 degr turn 
+					setPegAndLinksOnTensor(values, pCell, 0, size-r-2, c);
+				} else if (color == kRedColor) {
+					// 90+90 degr turn (red player sits left of blue player)
+					setPegAndLinksOnTensor(values, pCell, 5, size-c-2, size-r-1);
 				}
 			}
-		}
+		}			
 	}
-
-
-};
+}
 
 TwixTGame::TwixTGame(const GameParameters &params) :
 		Game(kGameType, params),

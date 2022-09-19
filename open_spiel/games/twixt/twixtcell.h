@@ -1,8 +1,8 @@
 #ifndef THIRD_PARTY_OPEN_SPIEL_GAMES_TWIXTCELL_H_
 #define THIRD_PARTY_OPEN_SPIEL_GAMES_TWIXTCELL_H_
 
-typedef std::pair<int, int> Tuple;
-typedef std::pair<Tuple, int> Link;
+typedef std::pair<int, int> Move;
+typedef std::pair<Move, int> Link;
 
 namespace open_spiel {
 namespace twixt {
@@ -13,11 +13,9 @@ enum Border {
 	kMaxBorder
 };
 
-enum Player {
-	kRedPlayer,
-	kBluePlayer,
-	kMaxPlayer
-};
+const open_spiel::Player kRedPlayer=0;
+const open_spiel::Player kBluePlayer=1;
+const int kNumPlayers=2;
 
 // eight directions of links from 0 to 7
 enum Compass {
@@ -40,12 +38,12 @@ class Cell {
 		int mLinks = 0;
 		// bitmap of candidates of a player
 		// (neighbors that are empty or have same color)
-		int mCandidates[kMaxPlayer] = { 0, 0 };
+		int mCandidates[kNumPlayers] = { 0, 0 };
 		// array of neighbor tuples
 		// (cells in knight's move distance that are on board)
-		Tuple mNeighbors[kMaxCompass];
+		Move mNeighbors[kMaxCompass];
 		// indicator if cell is linked to START|END border of player 0|1
-		bool mLinkedToBorder[kMaxPlayer][kMaxBorder] = { {false, false}, {false, false} };
+		bool mLinkedToBorder[kNumPlayers][kMaxBorder] = { {false, false}, {false, false} };
 
 	public:
 		int getColor() const { 	return mColor; };
@@ -66,8 +64,8 @@ class Cell {
 			mCandidates[kBluePlayer] &= ~(1UL << dir);
 		};
 
-		Tuple getNeighbor(int dir) const { return mNeighbors[dir]; };
-		void setNeighbor(int dir, Tuple c) { mNeighbors[dir]=c; };
+		Move getNeighbor(int dir) const { return mNeighbors[dir]; };
+		void setNeighbor(int dir, Move c) { mNeighbors[dir]=c; };
 
 		void setLinkedToBorder(int player, int border) { mLinkedToBorder[player][border] = true; };
 
