@@ -23,14 +23,13 @@ const double kDefaultDiscount=kMaxDiscount;
 
 // 8 link descriptors store the properties of a link direction
 struct {
-	Tuple offsets; // offset of the target peg, e.g. (2, -1) for ENE
-	std::vector<std::pair<Tuple, int>> blockingLinks;
+	Move offsets; // offset of the target peg, e.g. (2, -1) for ENE
+	std::vector<std::pair<Move, int>> blockingLinks;
 } typedef LinkDescriptor;
 
-//   2 planes for the pegs (1 plane per color) 
-// + 4 planes for the links to eastern directions (both colors) 
-// + 1 plane for the current player (all 0.0 or all 1.0)
-const int kNumPlanes=7;  
+// Tensor has 2 * (1 + 4) planes of size bordSize * (boardSize-2)
+// see ObservationTensor
+const int kNumPlanes=10;  
 
 enum Result {
   kOpen,
@@ -71,13 +70,12 @@ class Board {
 	private:
 		int mMoveCounter = 0;
 		bool mSwapped = false;
-		int mMoveOne;
+		Move mMoveOne;
 		int mResult = kOpen;
 		std::vector<std::vector<Cell>> mCell;
 		int mSize;  // length of a side of the board
 		bool mAnsiColorOutput;
-		std::vector<Action> mLegalActions[kMaxPlayer];
-		int mLegalActionIndex[kMaxPlayer][kMaxBoardSize*kMaxBoardSize];
+		std::vector<Action> mLegalActions[kNumPlayers];
 
 		void setSize(int size) { mSize = size; };
 
@@ -89,61 +87,39 @@ class Board {
 		bool getSwapped() const { return mSwapped; };
 		void setSwapped(bool swapped) {	mSwapped = swapped; };
 
-		Action getMoveOne() const { return mMoveOne; };
-		void setMoveOne(Action action) { mMoveOne = action; };
+		Move getMoveOne() const { return mMoveOne; };
+		void setMoveOne(Move move) { mMoveOne = move; };
 
 		void incMoveCounter() {	mMoveCounter++; };
 
+		bool hasLegalActions(Player player) const { return mLegalActions[player].size() > 0; };
 
-		bool hasLegalActions(int player) const { return mLegalActions[player].size() > 0; };
-		void removeLegalAction(int player, Action action) {
-			// for the performance optimized version
-			// the basic test fails because actions are not sorted
-			// but it works for example.cc and mcts_example.cc
-			/*
-			int pos = mLegalActionIndex[player][action];
-			if (pos >= 0) {
-				std::vector<Action> *la = &mLegalActions[player];
-				int last = la->back();
-				(*la)[pos] = last;
-				mLegalActionIndex[player][last] = pos;
-				la->pop_back();
-			}
-			*/
-			std::vector<Action> *la = &mLegalActions[player];
-			std::vector<Action>::iterator it;
-			it = find(la->begin(), la->end(), action);
-			if (it != la->end()) la->erase(it);
-		};
+		void removeLegalAction(Player, Move);
 
-		void updateResult(int, Tuple);
-		void undoFirstMove(Tuple c);
+		void updateResult(Player, Move);
+		void undoFirstMove();
 
 		void initializeCells(bool);
-		void initializeCandidates(Tuple, Cell *, bool);
-		void initializeBlockerMap(Tuple, int, LinkDescriptor *);
+		void initializeCandidates(Move, Cell *, bool);
+		void initializeBlockerMap(Move, int, LinkDescriptor *);
 
 		void initializeLegalActions();
 
-		void setPegAndLinks(int, Tuple);
-		void exploreLocalGraph(int, Cell * , enum Border);
+		void setPegAndLinks(Player, Move);
+		void exploreLocalGraph(Player, Cell * , enum Border);
 
-		void appendLinkChar(std::string *, Tuple, enum Compass, std::string) const;
+		void appendLinkChar(std::string *, Move, enum Compass, std::string) const;
 		void appendColorString(std::string *, std::string, std::string) const;
-		void appendPegChar(std::string *, Tuple ) const;
+		void appendPegChar(std::string *, Move ) const;
 
-		void appendBeforeRow(std::string *, Tuple) const;
-		void appendPegRow(std::string *, Tuple) const;
-		void appendAfterRow(std::string *, Tuple) const;
+		void appendBeforeRow(std::string *, Move) const;
+		void appendPegRow(std::string *, Move) const;
+		void appendAfterRow(std::string *, Move) const;
 
-		bool coordsOnBorder(int, Tuple) const;
-		bool coordsOffBoard(Tuple) const;
+		bool moveIsOnBorder(Player, Move) const;
+		bool moveIsOffBoard(Move) const;
 
-		int stringToAction(std::string s) const {
-			int x = int(s.at(0)) - int('A');
-			int y = getSize() - (int(s.at(1)) - int('0'));
-			return y * getSize() + x;
-		};
+		Action stringToAction(std::string s) const;
 
 	public:
 		~Board() {};
@@ -155,10 +131,12 @@ class Board {
 		std::string toString() const;
 		int getResult() const {	return mResult; };
 		int getMoveCounter() const { return mMoveCounter; };
-		std::vector<Action> getLegalActions(int player) const { return mLegalActions[player]; };
-		void applyAction(int, Action);
-		Cell* getCell(Tuple c) {  return  &mCell[c.first][c.second]; };
-		const Cell* getConstCell(Tuple c) const { return  &mCell[c.first][c.second]; };
+		std::vector<Action> getLegalActions(Player player) const { return mLegalActions[player]; };
+		void applyAction(Player, Action);
+		Cell* getCell(Move move) {  return  &mCell[move.first][move.second]; };
+		const Cell* getConstCell(Move move) const { return  &mCell[move.first][move.second]; };
+		Move actionToMove(open_spiel::Player player, Action action) const;
+		Action moveToAction(Player player, Move move) const;
 
 };
 
@@ -167,8 +145,6 @@ class Board {
 // * the x-axis (cols) points from left to right,
 // * the y axis (rows) points from bottom to top
 // * moves are labeled by col / row, e.g.  C3, F4, D2, ... (top row=1, left col=A)
-// * actions are indexed from 0 to boardSize^2
-// * coordinates to action:  [x,y] => move: y * boardSize + x
 // * player0: X, top/bottom, red
 // * player1: O, left/right, blue
 // * empty cell = 2 (EMPTY)
@@ -200,6 +176,58 @@ class Board {
 //there's a red link from C5 to D3:
 //cell[2][3].links = 00000001  (bit 1 set for NNE direction)
 //cell[3][5].links = 00010000  (bit 5 set for SSW direction)
+
+
+
+// Actions are indexed from 0 to boardSize * (boardSize-2) from the player's perspective: 
+
+// red player's actions
+//     A   B   C   D   E   F   G   H
+//    ------------------------------
+// 1 |     7  15  23  31  39  47     |
+//   |                               |
+// 2 |     6  14  22  30  38  46     |
+//   |                               |
+// 3 |     5  13  21  29  37  45     |
+//   |                               |
+// 4 |     4  12  20  28  36  44     |
+//   |                               |
+// 5 |     3  11  19  27  35  43     |
+//   |                               |
+// 6 |     2  10  18  26  34  42     |
+//   |                               |
+// 7 |     1   9  17  25  33  41     |
+//   |                               |
+// 8 |     0   8  16  24  32  40     |
+//     ------------------------------
+
+// blue player's actions
+//     A   B   C   D   E   F   G   H
+//    ------------------------------
+// 1 |                               |
+//   |                               |
+// 2 | 0   1   2   3   4   5   6   7 |
+//   |                               |
+// 3 | 8   9  10  11  12  13  14  15 |
+//   |                               |
+// 4 |16  17  18  19  20  21  22  23 |
+//   |                               |
+// 5 |24  25  26  27  28  29  30  31 |
+//   |                               |
+// 6 |32  33  34  35  36  37  38  39 |
+//   |                               |
+// 7 |40  41  42  43  44  45  46  47 |
+//   |                               |
+// 8 |                               |
+//     ------------------------------
+
+
+//  "move" = coords on or off the board (player independant)
+//  "action" = index of a move (player dependant)
+//  map move to red player action:  [c,r] => (c-1) * size + r,       ex.: D6 = [3,2] => (3-1) * 8 + 2 = 18
+//                                  D6 corresponds to action 18 of red player
+//  map move to blue player action: [c,r] => (size-r-2) * size + c,  ex.: D6 = [3,2] => (8-2-2) * 8 + 3 = 35
+//                                  D6 corresponds to action 35 of blue player
 
 }  // namespace twixt
 }  // namespace open_spiel

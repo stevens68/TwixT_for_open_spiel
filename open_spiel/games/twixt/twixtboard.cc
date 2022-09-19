@@ -24,8 +24,8 @@ inline int oppCand(int cand) {
 	return cand < 16 ? cand<<=4 : cand>>=4;
 }
 
-inline std::string coordsToString(Tuple c) {
-	return "[" + std::to_string(c.first) + "," + std::to_string(c.second) + "]";
+inline std::string moveToString(Move move) {
+	return "[" + std::to_string(move.first) + "," + std::to_string(move.second) + "]";
 }
 
 // table of 8 link descriptors
@@ -180,27 +180,30 @@ Board::Board(int size, bool ansiColorOutput) {
 	initializeLegalActions();
 }
 
-void Board::initializeBlockerMap(Tuple c, int dir, LinkDescriptor *ld) {
 
-	Link link = { c, dir };
+
+
+void Board::initializeBlockerMap(Move move, int dir, LinkDescriptor *ld) {
+
+	Link link = { move, dir };
 	for (auto &&entry : ld->blockingLinks) {
-		Tuple fromCoords = c + entry.first;
-		if (! coordsOffBoard(fromCoords)) {
+		Move fromMove = move + entry.first;
+		if (! moveIsOffBoard(fromMove)) {
 			LinkDescriptor *oppLd = &(kLinkDescriptorTable[entry.second]);
-			Tuple toCoords = c + entry.first + oppLd->offsets;
-			if (! coordsOffBoard(toCoords)) {
-				pushBlocker(link, { fromCoords, entry.second });
-				pushBlocker(link, { toCoords, oppDir(entry.second) });
+			Move toMove = move + entry.first + oppLd->offsets;
+			if (! moveIsOffBoard(toMove)) {
+				pushBlocker(link, { fromMove, entry.second });
+				pushBlocker(link, { toMove, oppDir(entry.second) });
 			}
 		}
 	}
 }
 
-void Board::updateResult(int player, Tuple c) {
+void Board::updateResult(Player player, Move move) {
 
 	// check for WIN
-	bool connectedToStart = getCell(c)->isLinkedToBorder(player, kStart);
-	bool connectedToEnd = getCell(c)->isLinkedToBorder(player, kEnd);
+	bool connectedToStart = getCell(move)->isLinkedToBorder(player, kStart);
+	bool connectedToEnd = getCell(move)->isLinkedToBorder(player, kEnd);
 	if (connectedToStart && connectedToEnd) {
 		// peg is linked to both boarder lines
 		setResult(player == kRedPlayer ? kRedWin : kBlueWin);
@@ -226,15 +229,14 @@ void Board::initializeCells(bool initBlockerMap) {
 	mCell.resize(getSize(), vector<Cell>(getSize()));
 	clearBlocker();
 
-	// initialize board with color (empty or overboard)
 	for (int x = 0; x < getSize(); x++) {
 		for (int y = 0; y < getSize(); y++) {
 
-			Tuple c = {x, y};
-			Cell *pCell = getCell(c);
+			Move move = {x, y};
+			Cell *pCell = getCell(move);
 
-			// set color to EMPTY or OVERBOARD
-			if (coordsOffBoard(c)) {
+			// set color to EMPTY or OFFBOARD
+			if (moveIsOffBoard(move)) {
 				pCell->setColor(kOffBoard);
 			} else { // regular board
 				pCell->setColor(kEmpty);
@@ -248,7 +250,7 @@ void Board::initializeCells(bool initBlockerMap) {
 					pCell->setLinkedToBorder(kRedPlayer, kEnd);
 				}
 
-				initializeCandidates(c, pCell, initBlockerMap);
+				initializeCandidates(move, pCell, initBlockerMap);
 			}
 		}
 	}
@@ -256,19 +258,19 @@ void Board::initializeCells(bool initBlockerMap) {
 
 }
 
-void Board::initializeCandidates(Tuple c, Cell *pCell, bool initBlockerMap) {
+void Board::initializeCandidates(Move move, Cell *pCell, bool initBlockerMap) {
 
 	for (int dir = 0; dir < kMaxCompass; dir++) {
 		LinkDescriptor *ld = &(kLinkDescriptorTable[dir]);
-		Tuple tc = c + ld->offsets;
-		if (! coordsOffBoard(tc)) {
+		Move targetMove = move + ld->offsets;
+		if (! moveIsOffBoard(targetMove)) {
 			if (initBlockerMap) {
-				initializeBlockerMap(c, dir, ld);
+				initializeBlockerMap(move, dir, ld);
 			}
-			pCell->setNeighbor(dir, tc);
-			Cell *pTargetCell = getCell(tc);
-			if (! (coordsOnBorder(kRedPlayer, c) && coordsOnBorder(kBluePlayer, tc)) &&
-				! (coordsOnBorder(kBluePlayer, c) && coordsOnBorder(kRedPlayer, tc))) {
+			pCell->setNeighbor(dir, targetMove);
+			Cell *pTargetCell = getCell(targetMove);
+			if (! (moveIsOnBorder(kRedPlayer, move) && moveIsOnBorder(kBluePlayer, targetMove)) &&
+				! (moveIsOnBorder(kBluePlayer, move) && moveIsOnBorder(kRedPlayer, targetMove))) {
 					pCell->setCandidate(kRedPlayer, dir);
 					pCell->setCandidate(kBluePlayer, dir);
 			}
@@ -278,23 +280,18 @@ void Board::initializeCandidates(Tuple c, Cell *pCell, bool initBlockerMap) {
 
 void Board::initializeLegalActions() {
 
-	for (int player = kRedPlayer; player < kMaxPlayer; player++) {
+	int numDistinctLegalActions = getSize() * (getSize()-2);
+
+	mLegalActions[kRedPlayer].resize(numDistinctLegalActions);
+	mLegalActions[kBluePlayer].resize(numDistinctLegalActions);
+
+	for (int player = kRedPlayer; player < kNumPlayers; player++) {
 		vector<Action> *la = &mLegalActions[player];
-
 		la->clear();
-		la->reserve(getSize() * getSize());
+		la->reserve(numDistinctLegalActions);
 
-		for (int y = 0; y < getSize(); y++) {
-			for (int x = 0; x < getSize(); x++) {
-				int action = y * getSize() + x;
-				if ( ! coordsOnBorder(1 - player, {x, y})
-						&& ! coordsOffBoard({x, y})) {
-					mLegalActionIndex[player][action] = la->size();
-					la->push_back(action);
-				} else {
-					mLegalActionIndex[player][action] = -1;
-				}
-			}
+		for (Action a = 0; a < numDistinctLegalActions; a++) {
+			la->push_back(a);
 		}
 	}
 }
@@ -307,7 +304,7 @@ string Board::toString() const {
 	s.append("     ");
 	for (int y = 0; y < getSize(); y++) {
 		string letter = "";
-		letter += char(int('A') + y);
+		letter += char(int('a') + y);
 		letter += "  ";
 		appendColorString(&s, kAnsiRed, letter);
 	}
@@ -345,10 +342,10 @@ string Board::toString() const {
 	case kOpen:
 		break;
 	case kRedWin:
-		s.append("[X has won]");
+		s.append("[x has won]");
 		break;
 	case kBlueWin:
-		s.append("[O has won]");
+		s.append("[o has won]");
 		break;
 	case kDraw:
 		s.append("[draw]");
@@ -359,11 +356,11 @@ string Board::toString() const {
 	return s;
 }
 
-void Board::appendLinkChar(string *s, Tuple c, enum Compass dir, string linkChar) const {
-	if (! coordsOffBoard(c) && getConstCell(c)->hasLink(dir)) {
-		if (getConstCell(c)->getColor() == kRedColor) {
+void Board::appendLinkChar(string *s, Move move, enum Compass dir, string linkChar) const {
+	if (! moveIsOffBoard(move) && getConstCell(move)->hasLink(dir)) {
+		if (getConstCell(move)->getColor() == kRedColor) {
 			appendColorString(s, kAnsiRed, linkChar);
-		} else if (getConstCell(c)->getColor() == kBlueColor) {
+		} else if (getConstCell(move)->getColor() == kBlueColor) {
 			appendColorString(s, kAnsiBlue, linkChar);
 		} else {
 			s->append(linkChar);
@@ -378,20 +375,20 @@ void Board::appendColorString(string *s, string colorString, string appString) c
 	s->append(getAnsiColorOutput() ? kAnsiDefault : ""); // make it default
 }
 
-void Board::appendPegChar(string *s, Tuple c) const {
-	if (getConstCell(c)->getColor() == kRedColor) {
-		// X
-		appendColorString(s, kAnsiRed, "X");
-	} else if (getConstCell(c)->getColor() == kBlueColor) {
-		// O
-		appendColorString(s, kAnsiBlue, "O");
-	} else if (coordsOffBoard(c)) {
+void Board::appendPegChar(string *s, Move move) const {
+	if (getConstCell(move)->getColor() == kRedColor) {
+		// x
+		appendColorString(s, kAnsiRed, "x");
+	} else if (getConstCell(move)->getColor() == kBlueColor) {
+		// o
+		appendColorString(s, kAnsiBlue, "o");
+	} else if (moveIsOffBoard(move)) {
 		// corner
 		s->append(" ");
-	} else if (c.first == 0 || c.first == getSize() - 1) {
+	} else if (move.first == 0 || move.first == getSize() - 1) {
 		// empty . (blue border line)
 		appendColorString(s, kAnsiBlue, ".");
-	} else if (c.second == 0 || c.second == getSize() - 1) {
+	} else if (move.second == 0 || move.second == getSize() - 1) {
 		// empty . (red border line)
 		appendColorString(s, kAnsiRed, ".");
 	} else {
@@ -400,117 +397,114 @@ void Board::appendPegChar(string *s, Tuple c) const {
 	}
 }
 
-void Board::appendBeforeRow(string *s, Tuple c) const {
+void Board::appendBeforeRow(string *s, Move move) const {
 
 	// -1, +1
 	int len = s->length();
-	appendLinkChar(s, c + (Tuple) {-1, 0}, kENE, "/");
-	appendLinkChar(s, c + (Tuple) {-1,-1}, kNNE, "/");
-	appendLinkChar(s, c + (Tuple) { 0, 0}, kWNW, "_");
+	appendLinkChar(s, move + (Move) {-1, 0}, kENE, "/");
+	appendLinkChar(s, move + (Move) {-1,-1}, kNNE, "/");
+	appendLinkChar(s, move + (Move) { 0, 0}, kWNW, "_");
 	if (len == s->length()) s->append(" ");
 
 	//  0, +1
 	len = s->length();
-	appendLinkChar(s, c, kNNE, "|");
-	if (len == s->length())	appendLinkChar(s, c, kNNW, "|");
+	appendLinkChar(s, move, kNNE, "|");
+	if (len == s->length())	appendLinkChar(s, move, kNNW, "|");
 	if (len == s->length()) s->append(" ");
 
 	// +1, +1
 	len = s->length();
-	appendLinkChar(s, c + (Tuple) {+1, 0}, kWNW, "\\");
-	appendLinkChar(s, c + (Tuple) {+1,-1}, kNNW, "\\");
-	appendLinkChar(s, c + (Tuple) { 0, 0}, kENE, "_");
+	appendLinkChar(s, move + (Move) {+1, 0}, kWNW, "\\");
+	appendLinkChar(s, move + (Move) {+1,-1}, kNNW, "\\");
+	appendLinkChar(s, move + (Move) { 0, 0}, kENE, "_");
 	if (len == s->length())	s->append(" ");
 
 }
 
-void Board::appendPegRow(string *s, Tuple c) const {
+void Board::appendPegRow(string *s, Move move) const {
 
 	// -1, 0
 	int len = s->length();
-	appendLinkChar(s, c + (Tuple) {-1,-1}, kNNE, "|");
-	appendLinkChar(s, c + (Tuple) { 0, 0}, kWSW, "_");
+	appendLinkChar(s, move + (Move) {-1,-1}, kNNE, "|");
+	appendLinkChar(s, move + (Move) { 0, 0}, kWSW, "_");
 	if (len == s->length()) s->append(" ");
 
 	//  0,  0
-	appendPegChar(s, c);
+	appendPegChar(s, move);
 
 	// +1, 0
 	len = s->length();
-	appendLinkChar(s, c + (Tuple) {+1,-1}, kNNW, "|");
-	appendLinkChar(s, c + (Tuple) { 0, 0}, kESE, "_");
+	appendLinkChar(s, move + (Move) {+1,-1}, kNNW, "|");
+	appendLinkChar(s, move + (Move) { 0, 0}, kESE, "_");
 	if (len == s->length()) s->append(" ");
 
 }
 
-void Board::appendAfterRow(string *s, Tuple c) const {
+void Board::appendAfterRow(string *s, Move move) const {
 
 	// -1, -1
 	int len = s->length();
-	appendLinkChar(s, c + (Tuple) {+1, -1}, kWNW, "\\");
-	appendLinkChar(s, c + (Tuple) { 0, -1}, kNNW, "\\");
+	appendLinkChar(s, move + (Move) {+1, -1}, kWNW, "\\");
+	appendLinkChar(s, move + (Move) { 0, -1}, kNNW, "\\");
 	if (len == s->length()) s->append(" ");
 
 	//  0, -1
 	len = s->length();
-	appendLinkChar(s, c + (Tuple) {-1, -1}, kENE, "_");
-	appendLinkChar(s, c + (Tuple) {+1, -1}, kWNW, "_");
-	appendLinkChar(s, c, kSSW, "|");
-	if (len == s->length()) appendLinkChar(s, c, kSSE, "|");
+	appendLinkChar(s, move + (Move) {-1, -1}, kENE, "_");
+	appendLinkChar(s, move + (Move) {+1, -1}, kWNW, "_");
+	appendLinkChar(s, move, kSSW, "|");
+	if (len == s->length()) appendLinkChar(s, move, kSSE, "|");
 	if (len == s->length()) s->append(" ");
 
 	// -1, -1
 	len = s->length();
-	appendLinkChar(s, c + (Tuple) {-1, -1}, kENE, "/");
-	appendLinkChar(s, c + (Tuple) { 0, -1}, kNNE, "/");
+	appendLinkChar(s, move + (Move) {-1, -1}, kENE, "/");
+	appendLinkChar(s, move + (Move) { 0, -1}, kNNE, "/");
 	if (len == s->length()) s->append(" ");
 }
 
-void Board::undoFirstMove(Tuple c) {
-	Cell *pCell = getCell(c);
+void Board::undoFirstMove() {
+	Cell *pCell = getCell(getMoveOne());
 	pCell->setColor(kEmpty);
 	// initialize Candidates but not static blockerMap
-	initializeCandidates(c, pCell, false);
+	initializeCandidates(getMoveOne(), pCell, false);
 	initializeLegalActions();
 }
 
-void Board::applyAction(int player, Action move) {
+void Board::applyAction(Player player, Action action) {
 
-	Tuple c = { (int) move % getSize(), (int) move / getSize() };
+	Move move = actionToMove(player, action);
 
 	if (getMoveCounter() == 1) {
+		// it's the second move
 		if (move == getMoveOne()) {
-			// second player swapped
+			// blue player swapped
 			setSwapped(true);
 
-			// undo first move (peg and legal actions)
-			undoFirstMove(c);
+			// undo the first move (peg and legal actions)
+			undoFirstMove();
 
-			// turn move 90° clockwise
-			move = (move % getSize()) * getSize()
-					+ (getSize() - (move / getSize()) - 1);
-
-			// get coordinates for move
-			c = { (int) move % getSize(), (int) move / getSize() };
+			// turn move 90° clockwise: [3,2] -> [5,3]
+			int col = getSize() - move.second - 1;
+			int row = move.first;
+			move = {col, row};
 
 		} else {
-			// not swapped => regular move
-			// remove move #1 from legal moves
+			// blue player hasn't swapped => regular move
+			// remove move one from legal moves
 			removeLegalAction(kRedPlayer, getMoveOne());
 			removeLegalAction(kBluePlayer, getMoveOne());
 		}
 	}
 
-
-	setPegAndLinks(player, c);
-
+	setPegAndLinks(player, move);
 
 	if (getMoveCounter() == 0) {
 		// do not remove the move from legal actions but store it
-		// because second player might want to swap, i.e. chose same move
+		// because second player might want to swap, by choosing the same move
 		setMoveOne(move);
 	} else {
-		// other wise remove move from mLegalActions
+		// otherwise remove move from legal actions
 		removeLegalAction(kRedPlayer, move);
 		removeLegalAction(kBluePlayer, move);
 	}
@@ -518,18 +512,18 @@ void Board::applyAction(int player, Action move) {
 	incMoveCounter();
 
 	// Update the predicted result and update mCurrentPlayer...
-	updateResult(player, c);
+	updateResult(player, move);
 
 }
 
-void Board::setPegAndLinks(int player, Tuple c) {
+void Board::setPegAndLinks(Player player, Move move) {
 
 	bool linkedToNeutral = false;
 	bool linkedToStart = false;
 	bool linkedToEnd = false;
 
 	// set peg
-	Cell *pCell = getCell(c);
+	Cell *pCell = getCell(move);
 	pCell->setColor(player);
 
 	int dir=0;
@@ -538,7 +532,7 @@ void Board::setPegAndLinks(int player, Tuple c) {
 	for (int cand=1, dir=0; cand <= pCell->getCandidates(player) ; cand<<=1, dir++) {
 		if (pCell->isCandidate(player, cand)) {
 
-			Tuple n = pCell->getNeighbor(dir);	
+			Move n = pCell->getNeighbor(dir);	
 
 			Cell *pTargetCell = getCell(pCell->getNeighbor(dir));
 			if (pTargetCell->getColor() == kEmpty) {
@@ -547,7 +541,7 @@ void Board::setPegAndLinks(int player, Tuple c) {
 				pTargetCell->deleteCandidate(1-player, oppCand(cand));
 			} else {
 				// check if there are blocking links before setting link
-				set<Link> *blockers = getBlockers((Link) {c, dir});
+				set<Link> *blockers = getBlockers((Link) {move, dir});
 				bool blocked = false;
 				for (auto &&bl : *blockers) {
 					if (getCell(bl.first)->hasLink(bl.second)) {
@@ -594,7 +588,7 @@ void Board::setPegAndLinks(int player, Tuple c) {
 
 }
 
-void Board::exploreLocalGraph(int player, Cell *pCell, enum Border border) {
+void Board::exploreLocalGraph(Player player, Cell *pCell, enum Border border) {
 
 	int dir=0;
 	for (int link=1, dir=0; link <= pCell->getLinks(); link<<=1, dir++) {
@@ -611,25 +605,67 @@ void Board::exploreLocalGraph(int player, Cell *pCell, enum Border border) {
 }
 
 
-bool Board::coordsOnBorder(int player, Tuple c) const {
+Move Board::actionToMove(open_spiel::Player player, Action action) const {
+
+	Move move;
+	if (player == kRedPlayer) {
+		move.first = action / mSize + 1; // col
+		move.second = action % mSize; // row
+	} else {
+		move.first = action % mSize; //col 
+		move.second = mSize - (action / mSize) - 2; // row
+	}
+	return move;
+}
+
+Action Board::moveToAction(Player player, Move move) const {
+
+	Action action;
+	if (player == kRedPlayer) {
+		action = (move.first - 1) * mSize + move.second;
+	} else {
+		action = (mSize - move.second - 2) * mSize + move.first;
+	}
+	return action;
+}
+
+Action Board::stringToAction(std::string s) const {
+	Player player = (s.at(0) == 'x') ? kRedPlayer : kBluePlayer;
+	Move move;
+	move.first = int(s.at(1)) - int('a');
+	move.second = getSize() - (int(s.at(2)) - int('0'));
+	return moveToAction(player, move);
+};
+
+
+bool Board::moveIsOnBorder(Player player, Move move) const {
 
 	if (player == kRedPlayer) {
-		return ((c.second == 0 || c.second == getSize() - 1)
-				&& (c.first > 0 && c.first < getSize() - 1));
+		return ((move.second == 0 || move.second == getSize() - 1)
+				&& (move.first > 0 && move.first < getSize() - 1));
 	} else {
-		return ((c.first == 0 || c.first == getSize() - 1)
-				&& (c.second > 0 && c.second < getSize() - 1));
+		return ((move.first == 0 || move.first == getSize() - 1)
+				&& (move.second > 0 && move.second < getSize() - 1));
 	}
 }
 
-bool Board::coordsOffBoard(Tuple c) const {
+bool Board::moveIsOffBoard(Move move) const {
 
-	return (c.second < 0 || c.second > getSize() - 1 ||
-			c.first  < 0 || c.first >  getSize() - 1 ||
+	return (move.second < 0 || move.second > getSize() - 1 ||
+			move.first  < 0 || move.first >  getSize() - 1 ||
 			// corner case
-		   ((c.first  == 0 || c.first  == getSize() - 1) &&
-		    (c.second == 0 || c.second == getSize() - 1)));
+		   ((move.first  == 0 || move.first  == getSize() - 1) &&
+		    (move.second == 0 || move.second == getSize() - 1)));
 }
+
+
+void Board::removeLegalAction(Player player, Move move) {
+	Action action = moveToAction(player, move);
+	std::vector<Action> *la = &mLegalActions[player];
+	std::vector<Action>::iterator it;
+	it = find(la->begin(), la->end(), action);
+	if (it != la->end()) la->erase(it);
+};
 
 
 }  // namespace twixt

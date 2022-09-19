@@ -58,45 +58,73 @@ TwixTState::TwixTState(std::shared_ptr<const Game> game) :   State(game) {
 
 }
 
+std::string TwixTState::ActionToString(open_spiel::Player player, Action action) const
+{
+	Move move = mBoard.actionToMove(player, action);	
+	std::string s = (player == kRedPlayer) ? "x" : "o";
+	s += char(int('a') + move.first);
+	s.append(std::to_string(mBoard.getSize() - move.second));
+	return s;
+
+};
+
+void TwixTState::setPegAndLinksOnTensor(absl::Span<float> values, const Cell *pCell, int offset, int col, int row) const {
+	// we flip col/row here for better output in playthrough file 
+	TensorView<3> view(values, {kNumPlanes, mBoard.getSize(), mBoard.getSize()-2}, false);
+	view[{0 + offset, row, col}] = 1.0;
+	if (pCell->hasLinks()) {
+		if (pCell->hasLink(kNNE)) { view[{1 + offset, row, col}] = 1.0; };
+		if (pCell->hasLink(kENE)) { view[{2 + offset, row, col}] = 1.0; };
+		if (pCell->hasLink(kESE)) { view[{3 + offset, row, col}] = 1.0; };
+		if (pCell->hasLink(kSSE)) { view[{4 + offset, row, col}] = 1.0; };
+	}
+}
+
+
 void TwixTState::ObservationTensor (open_spiel::Player player, absl::Span<float> values) const {
 
 	SPIEL_CHECK_GE(player, 0);
-	SPIEL_CHECK_LT(player, kMaxPlayer);
+	SPIEL_CHECK_LT(player, kNumPlayers);
 
 	int size = mBoard.getSize();
-	TensorView<3> view(values, {kNumPlanes, size, size}, true);
 
-	// 6 planes boardSize x boardSize: 
-	// plane 0: red pegs, 
-	// plane 1: blue pegs,
-	// to avoid redundany. we only store the links with eastern direction for both colors in one plane
-	// plane 2: NNE-links, 
-	// plane 3: ENE-links, 
-	// plane 4: ESE-links, 
-	// plane 5: SSE-links
-	// plane 6: player-plane
+	// 10 planes of size boardSize x (boardSize-2): 
+	// each plane excludes the endlines of the opponent
+	// planes 0-4 are for the current player from current player's perspective)
+	// planes 5-9 are for the opponent from current player's perspective 
+	// plane 0/5: pegs, 
+	// plane 1/6: NNE-links, 
+	// plane 2/7: ENE-links, 
+	// plane 3/8: ESE-links, 
+	// plane 4/9: SSE-links
+
+	TensorView<3> view(values, {kNumPlanes, mBoard.getSize(), mBoard.getSize()-2}, true);
 
 	for (int c = 0; c < size; c++) {
 		for (int r = 0; r < size; r++) {
-			Tuple t = { c, r };
-			const Cell *pCell = mBoard.getConstCell(t); 
+			Move move = { c, r };
+			const Cell *pCell = mBoard.getConstCell(move); 
 			int color = pCell->getColor();
-			view[{6, c, r}] = (float) player;
-			if (color == kRedColor || color == kBlueColor) {
-				// there's a peg
-				view[{color, c, r}] = 1.0;
-				if (pCell->hasLinks()) {
-					if (pCell->hasLink(kNNE)) { view[{2, c, r}] = 1.0; };
-					if (pCell->hasLink(kENE)) { view[{3, c, r}] = 1.0; };
-					if (pCell->hasLink(kESE)) { view[{4, c, r}] = 1.0; };
-					if (pCell->hasLink(kSSE)) { view[{5, c, r}] = 1.0; };
+			if (player == kRedPlayer) {
+				if (color == kRedColor) {
+					// no turn
+					setPegAndLinksOnTensor(values, pCell, 0, c-1, r);
+				} else if (color == kBlueColor) {
+					// 90 degr turn (blue player sits left side of red player)
+					setPegAndLinksOnTensor(values, pCell, 5, size-r-2, c);
+				}
+			} else if (player == kBluePlayer) {
+				if (color == kBlueColor) {
+					// 90 degr turn 
+					setPegAndLinksOnTensor(values, pCell, 0, size-r-2, c);
+				} else if (color == kRedColor) {
+					// 90+90 degr turn (red player sits left of blue player)
+					setPegAndLinksOnTensor(values, pCell, 5, size-c-2, size-r-1);
 				}
 			}
-		}
+		}			
 	}
-
-
-};
+}
 
 TwixTGame::TwixTGame(const GameParameters &params) :
 		Game(kGameType, params),
