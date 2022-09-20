@@ -23,6 +23,7 @@ add_executable(twixt_test twixt_test.cc ${OPEN_SPIEL_OBJECTS}
 add_test(twixt_test twixt_test)
 ```
 * In `open_spiel/open_spiel/python/tests/pyspiel_test.py` add `"twixt"` to the list of games.
+* Copy `TwixT_for_open_spiel/open_spiel/integration_tests/playthroughs/twixt.txt` to `open_spiel/open_spiel/integration_tests/playthroughs/twixt.txt`
 * Build the targets as described [here](https://github.com/deepmind/open_spiel/blob/master/docs/install.md)
 
 ## Examples
