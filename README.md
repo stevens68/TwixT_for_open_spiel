@@ -32,12 +32,12 @@ add_test(twixt_test twixt_test)
     
     examples/mcts_example --game=twixt -player1=mcts --player2=mcts --max_simulations=20000 --rollout_count=4 --verbose=true
     
-    python examples/example.py --game=twixt\(board_size=12,ansi_color_output=false,discount=0.999\)
+    python examples/example.py --game=twixt\(board_size=12,ansi_color_output=False,discount=0.999\)
 
 
 * board_size must be in [5..24], default=8
 * discount must be in [0.0..1.0], default=1.0
-* ansi_color_output must be true|false, default true
+* ansi_color_output must be True|False, default True
 
 
 ## Rules
