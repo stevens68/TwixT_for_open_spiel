@@ -28,11 +28,13 @@ add_test(twixt_test twixt_test)
 
 ## Examples
 
-    examples/example --game=twixt
+    ./build/examples/example --game=twixt
     
-    examples/mcts_example --game=twixt -player1=mcts --player2=mcts --max_simulations=20000 --rollout_count=4 --verbose=true
+    ./build/examples/mcts_example --game="twixt(board_size=12)"
     
-    python examples/example.py --game=twixt\(board_size=12,ansi_color_output=False,discount=0.999\)
+    ./build/examples/mcts_example --game=twixt -player1=mcts --player2=mcts --max_simulations=20000 --rollout_count=4 --verbose=true
+    
+    python ./open_spiel/python/examples/example.py --game=twixt\(board_size=12,ansi_color_output=False,discount=0.999\)
 
 
 * board_size must be in [5..24], default=8
