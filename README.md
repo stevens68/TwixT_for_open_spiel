@@ -46,4 +46,4 @@ add_test(twixt_test twixt_test)
 * this is a paper-and-pencil variant of TwixT without link removal and without crossing of own links. 
 * player 0 (x, red) has the top/bottom endlines, player 1 (o, blue) has the left/right endlines.
 * If a player has no more legal moves left - when it's his turn - the game is a draw.
-* player 1 can swap the first move of player 0 by choosing the same move again - unless the first move is on an endline.    
+* player 1 (o, blue) can swap player 0's first move by choosing the same move again - unless it is on an endline.    
