@@ -16,7 +16,7 @@ twixt/twixtboard.cc
 twixt/twixtboard.h
 twixt/twixtcell.h 
 ```
-* durther down in `open_spiel/open_spiel/games/CMakeLists.txt` add the following lines
+* further down in `open_spiel/open_spiel/games/CMakeLists.txt` add the following lines
 ```
 add_executable(twixt_test twixt_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>)
@@ -44,9 +44,6 @@ add_test(twixt_test twixt_test)
 
 ## Rules
 * this is a paper-and-pencil variant of TwixT without link removal and without crossing of own links. 
-* player 0 (X, red) has the top/bottom endlines, player 1 (O, blue) has the left/right endlines.
+* player 0 (x, red) has the top/bottom endlines, player 1 (o, blue) has the left/right endlines.
 * If a player has no more legal moves left - when it's his turn - the game is a draw.
-* The swap rule is implemented like this: 
-  * player 1 swaps by choosing the same square as player 0.
-  * the red peg is removed and a blue peg is positioned 90° clockwise instead.
-   
+* player 1 can swap the first move of player 0 by choosing the same move again - unless the first move is on an endline.    
