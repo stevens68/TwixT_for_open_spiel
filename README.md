@@ -7,8 +7,8 @@ C++ implementation of the board game [TwixT](https://en.wikipedia.org/wiki/TwixT
 ## Installation
 
 * Clone deepmind's open_spiel [repository](https://github.com/deepmind/open_spiel) and follow the installation instructions
-* Copy the `TwixT_for_open_spiel/open_spiel/games/twixt*` files into `open_spiel/open_spiel/games`
-* In `open_spiel/open_spiel/games/CMakeLists.txt` add the following files
+* Clone this repository and copy the `TwixT_for_open_spiel/open_spiel/games/twixt*` files into `open_spiel/open_spiel/games`
+* Edit `open_spiel/open_spiel/games/CMakeLists.txt` and add the following files
 ```
 twixt.cc
 twixt.h
@@ -16,14 +16,14 @@ twixt/twixtboard.cc
 twixt/twixtboard.h
 twixt/twixtcell.h 
 ```
-* In `open_spiel/open_spiel/games/CMakeLists.txt` add a test section
+* ... and add lines for twixt_test 
 ```
 add_executable(twixt_test twixt_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>)
 add_test(twixt_test twixt_test)
 ```
-* In `open_spiel/open_spiel/python/tests/pyspiel_test.py` add `"twixt"` to the list of games.
-* Copy `TwixT_for_open_spiel/open_spiel/integration_tests/playthroughs/twixt.txt` to `open_spiel/open_spiel/integration_tests/playthroughs/twixt.txt`
+* Edit `open_spiel/open_spiel/python/tests/pyspiel_test.py` and add `"twixt"` to the list of games.
+* Copy file `TwixT_for_open_spiel/open_spiel/integration_tests/playthroughs/twixt.txt` into `open_spiel/open_spiel/integration_tests/playthroughs/
 * Build the targets as described [here](https://github.com/deepmind/open_spiel/blob/master/docs/install.md)
 
 ## Examples
