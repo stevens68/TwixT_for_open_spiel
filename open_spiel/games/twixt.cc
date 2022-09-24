@@ -68,16 +68,25 @@ std::string TwixTState::ActionToString(open_spiel::Player player, Action action)
 
 };
 
-void TwixTState::setPegAndLinksOnTensor(absl::Span<float> values, const Cell *pCell, int offset, int col, int row) const {
+
+void TwixTState::setPegAndLinksOnTensor(absl::Span<float> values, const Cell *pCell, int offset, int turn, Move move) const {
 	// we flip col/row here for better output in playthrough file 
 	TensorView<3> view(values, {kNumPlanes, mBoard.getSize(), mBoard.getSize()-2}, false);
-	view[{0 + offset, row, col}] = 1.0;
-	if (pCell->hasLinks()) {
-		if (pCell->hasLink(kNNE)) { view[{1 + offset, row, col}] = 1.0; };
-		if (pCell->hasLink(kENE)) { view[{2 + offset, row, col}] = 1.0; };
-		if (pCell->hasLink(kESE)) { view[{3 + offset, row, col}] = 1.0; };
-		if (pCell->hasLink(kSSE)) { view[{4 + offset, row, col}] = 1.0; };
+	Move tensorMove = mBoard.getTensorMove(move, turn);
+
+	if (! pCell->hasLinks()) {
+		// peg has no links -> use plane 0
+		view[{0 + offset, tensorMove.second, tensorMove.first}] = 1.0;
+	} else {
+		// peg has links -> use plane 1
+		view[{1 + offset, tensorMove.second, tensorMove.first}] = 1.0;
 	}
+
+	if (pCell->hasBlockedNeighbors()) {
+		// peg has blocked neighbors on plane 1 -> use also plane 2
+		view[{2 + offset, tensorMove.second, tensorMove.first}] = 1.0;
+	}
+
 }
 
 
@@ -86,18 +95,17 @@ void TwixTState::ObservationTensor (open_spiel::Player player, absl::Span<float>
 	SPIEL_CHECK_GE(player, 0);
 	SPIEL_CHECK_LT(player, kNumPlayers);
 
+	const int kOpponentPlaneOffset=3;
+	const int kCurPlayerPlaneOffset=0;
 	int size = mBoard.getSize();
 
-	// 10 planes of size boardSize x (boardSize-2): 
+	// 6 planes of size boardSize x (boardSize-2): 
 	// each plane excludes the endlines of the opponent
-	// planes 0-4 are for the current player from current player's perspective)
-	// planes 5-9 are for the opponent from current player's perspective 
-	// plane 0/5: pegs, 
-	// plane 1/6: NNE-links, 
-	// plane 2/7: ENE-links, 
-	// plane 3/8: ESE-links, 
-	// plane 4/9: SSE-links
+	// planes 0 (3) are for the unlinked pegs of the current (opponent) player
+	// planes 1 (4) are for the linked pegs of the current (opponent) player
+	// planes 2 (5) are for the blocked pegs on plane 1 (4) 
 
+	// here we initialize Tensor with zeros for each state
 	TensorView<3> view(values, {kNumPlanes, mBoard.getSize(), mBoard.getSize()-2}, true);
 
 	for (int c = 0; c < size; c++) {
@@ -108,18 +116,19 @@ void TwixTState::ObservationTensor (open_spiel::Player player, absl::Span<float>
 			if (player == kRedPlayer) {
 				if (color == kRedColor) {
 					// no turn
-					setPegAndLinksOnTensor(values, pCell, 0, c-1, r);
+					setPegAndLinksOnTensor(values, pCell, kCurPlayerPlaneOffset, 0, move);
 				} else if (color == kBlueColor) {
 					// 90 degr turn (blue player sits left side of red player)
-					setPegAndLinksOnTensor(values, pCell, 5, size-r-2, c);
+					setPegAndLinksOnTensor(values, pCell, kOpponentPlaneOffset, 90, move);
 				}
 			} else if (player == kBluePlayer) {
 				if (color == kBlueColor) {
 					// 90 degr turn 
-					setPegAndLinksOnTensor(values, pCell, 0, size-r-2, c);
+					setPegAndLinksOnTensor(values, pCell, kCurPlayerPlaneOffset, 90, move);
 				} else if (color == kRedColor) {
 					// 90+90 degr turn (red player sits left of blue player)
-					setPegAndLinksOnTensor(values, pCell, 5, size-c-2, size-r-1);
+					//setPegAndLinksOnTensor(values, pCell, 5, size-c-2, size-r-1);
+					setPegAndLinksOnTensor(values, pCell, kOpponentPlaneOffset, 180, move);
 				}
 			}
 		}			
