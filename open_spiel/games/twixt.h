@@ -80,7 +80,7 @@ class TwixTState: public State {
 		double mDiscount = kDefaultDiscount;
 
 		void setCurrentPlayer(int player) { mCurrentPlayer = player; }
-		void setPegAndLinksOnTensor(absl::Span<float>, const Cell *, int, int, int) const;
+		void setPegAndLinksOnTensor(absl::Span<float>, const Cell *, int, int, Move) const;
 
 };
 
@@ -111,11 +111,13 @@ class TwixTGame: public Game {
 			return mBoardSize*mBoardSize - 4 + 1; 
 		}
 		bool getAnsiColorOutput() const { return mAnsiColorOutput; }
+		bool getUnicodeOutput() const { return mUnicodeOutput; }
 		int getBoardSize() const { return mBoardSize; }
 		double getDiscount() const { return mDiscount; }
 
 	private:
 		bool mAnsiColorOutput;
+		bool mUnicodeOutput;
 		int  mBoardSize;
 		double mDiscount;
 

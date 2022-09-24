@@ -356,6 +356,8 @@ string Board::toString() const {
 	return s;
 }
 
+
+
 void Board::appendLinkChar(string *s, Move move, enum Compass dir, string linkChar) const {
 	if (! moveIsOffBoard(move) && getConstCell(move)->hasLink(dir)) {
 		if (getConstCell(move)->getColor() == kRedColor) {
@@ -567,7 +569,12 @@ void Board::setPegAndLinks(Player player, Move move) {
 					} else {
 						linkedToNeutral = true;
 					}
-				} // not blocked
+				} else {
+					// we store the fact that these two pegs of the same color cannot be linked
+					// this info is used for the ObservationTensor
+					pCell->setBlockedNeighbor(cand);
+					pTargetCell->setBlockedNeighbor(oppCand(cand));
+				}
 			} // is not empty
 		} // is candidate
 	} // candidate range
@@ -604,6 +611,24 @@ void Board::exploreLocalGraph(Player player, Cell *pCell, enum Border border) {
 	}
 }
 
+
+Move Board::getTensorMove(Move move, int turn) const {
+
+	switch (turn) {
+		case 0:
+			return { move.first-1, move.second };
+			break;
+		case 90:
+			return { getSize() - move.second - 2, move.first };
+			break;
+		case 180:
+			return { getSize() - move.first - 2, getSize() - move.second - 1 };
+			break;
+		default:
+			SpielFatalError("invalid turn: " + std::to_string(turn) + "; should be 0, 90, 180");
+	}
+
+}
 
 Move Board::actionToMove(open_spiel::Player player, Action action) const {
 

@@ -15,7 +15,7 @@ const int kMinBoardSize =5 ;
 const int kMaxBoardSize = 24;
 const int kDefaultBoardSize = 8;
 
-const int kDefaultAnsiColorOutput=true;
+const bool kDefaultAnsiColorOutput=true;
 
 const double kMinDiscount=0.0;
 const double kMaxDiscount=1.0;
@@ -27,9 +27,9 @@ struct {
 	std::vector<std::pair<Move, int>> blockingLinks;
 } typedef LinkDescriptor;
 
-// Tensor has 2 * (1 + 4) planes of size bordSize * (boardSize-2)
+// Tensor has 2 * 3 planes of size bordSize * (boardSize-2)
 // see ObservationTensor
-const int kNumPlanes=10;  
+const int kNumPlanes=6;  
 
 enum Result {
   kOpen,
@@ -137,24 +137,27 @@ class Board {
 		const Cell* getConstCell(Move move) const { return  &mCell[move.first][move.second]; };
 		Move actionToMove(open_spiel::Player player, Action action) const;
 		Action moveToAction(Player player, Move move) const;
+		Move getTensorMove(Move move, int turn) const;
 
 };
 
 // twixt board:
 // * the board has mBoardSize x mBoardSize cells
-// * the x-axis (cols) points from left to right,
-// * the y axis (rows) points from bottom to top
-// * moves are labeled by col / row, e.g.  C3, F4, D2, ... (top row=1, left col=A)
-// * player0: X, top/bottom, red
-// * player1: O, left/right, blue
-// * empty cell = 2 (EMPTY)
-// * corner cell = 3 (OFFBOARD)
+// * the x-axis (cols) points right,
+// * the y axis (rows) points up
+// * coords [col,row] start at the lower left corner [0,0]
+// * coord labels c3, f4, d2, etc. start at the upper left corner (a1)
+// * player 0 = x, top/bottom, red
+// * player 1 = o, left/right, blue
+// * move is labeled player + coord label, e.g. xd4
+// * empty cell = 2 
+// * corner cell = 3 
 //
-// example 8 x 8 board: red peg at [2,3]: label=C5, action=26
-//                      red peg at [3,5]: label=D3, action=43
-//                     blue peg at [5,3]: label=F5, action=29
+// example 8 x 8 board: red peg at [2,3]: label=c5, red action=26
+//                      red peg at [3,5]: label=d3, red action=21
+//                     blue peg at [5,3]: label=f5, red action=29
 //
-//     A   B   C   D   E   F   G   H
+//     a   b   c   d   e   f   g   h
 //    ------------------------------
 // 1 | 3   2   2   2   2   2   2   3 |
 //   |                               |
@@ -173,7 +176,7 @@ class Board {
 // 8 | 3   2   2   2   2   2   2   3 |
 //     ------------------------------
 
-//there's a red link from C5 to D3:
+//there's a red link from c5 to d3:
 //cell[2][3].links = 00000001  (bit 1 set for NNE direction)
 //cell[3][5].links = 00010000  (bit 5 set for SSW direction)
 
@@ -182,7 +185,7 @@ class Board {
 // Actions are indexed from 0 to boardSize * (boardSize-2) from the player's perspective: 
 
 // red player's actions
-//     A   B   C   D   E   F   G   H
+//     a   b   c   d   e   f   g   h
 //    ------------------------------
 // 1 |     7  15  23  31  39  47     |
 //   |                               |
@@ -202,7 +205,7 @@ class Board {
 //     ------------------------------
 
 // blue player's actions
-//     A   B   C   D   E   F   G   H
+//     a   b   c   d   e   f   g   h
 //    ------------------------------
 // 1 |                               |
 //   |                               |
@@ -222,12 +225,10 @@ class Board {
 //     ------------------------------
 
 
-//  "move" = coords on or off the board (player independant)
-//  "action" = index of a move (player dependant)
-//  map move to red player action:  [c,r] => (c-1) * size + r,       ex.: D6 = [3,2] => (3-1) * 8 + 2 = 18
-//                                  D6 corresponds to action 18 of red player
-//  map move to blue player action: [c,r] => (size-r-2) * size + c,  ex.: D6 = [3,2] => (8-2-2) * 8 + 3 = 35
-//                                  D6 corresponds to action 35 of blue player
+//  map move to red player action:  [c,r] => (c-1) * size + r,       ex.: xd6 = [3,2] => (3-1) * 8 + 2 = 18
+//                                  xd6 corresponds to action 18 of red player
+//  map move to blue player action: [c,r] => (size-r-2) * size + c,  ex.: od6 = [3,2] => (8-2-2) * 8 + 3 = 35
+//                                  od6 corresponds to action 35 of blue player
 
 }  // namespace twixt
 }  // namespace open_spiel

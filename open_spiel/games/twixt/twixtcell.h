@@ -39,6 +39,8 @@ class Cell {
 		// bitmap of candidates of a player
 		// (neighbors that are empty or have same color)
 		int mCandidates[kNumPlayers] = { 0, 0 };
+		// bitmap of neighbors of same color that are blocked
+		int mBlockedNeighbors = 0;
 		// array of neighbor tuples
 		// (cells in knight's move distance that are on board)
 		Move mNeighbors[kMaxCompass];
@@ -63,6 +65,9 @@ class Cell {
 			mCandidates[kRedPlayer] &= ~(1UL << dir);
 			mCandidates[kBluePlayer] &= ~(1UL << dir);
 		};
+
+		void setBlockedNeighbor(int dir) { mBlockedNeighbors |= (1UL << dir); };
+		bool hasBlockedNeighbors() const { return mBlockedNeighbors > 0; };
 
 		Move getNeighbor(int dir) const { return mNeighbors[dir]; };
 		void setNeighbor(int dir, Move c) { mNeighbors[dir]=c; };
