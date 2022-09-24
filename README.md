@@ -23,20 +23,23 @@ add_executable(twixt_test twixt_test.cc ${OPEN_SPIEL_OBJECTS}
 add_test(twixt_test twixt_test)
 ```
 * In `open_spiel/open_spiel/python/tests/pyspiel_test.py` add `"twixt"` to the list of games.
+* Copy `TwixT_for_open_spiel/open_spiel/integration_tests/playthroughs/twixt.txt` to `open_spiel/open_spiel/integration_tests/playthroughs/twixt.txt`
 * Build the targets as described [here](https://github.com/deepmind/open_spiel/blob/master/docs/install.md)
 
 ## Examples
 
-    examples/example --game=twixt
+    ./build/examples/example --game=twixt
     
-    examples/mcts_example --game=twixt -player1=mcts --player2=mcts --max_simulations=20000 --rollout_count=4 --verbose=true
+    ./build/examples/mcts_example --game="twixt(board_size=12)"
     
-    python examples/example.py --game=twixt\(board_size=12,ansi_color_output=false,discount=0.999\)
+    ./build/examples/mcts_example --game=twixt -player1=mcts --player2=mcts --max_simulations=20000 --rollout_count=4 --verbose=true
+    
+    python ./open_spiel/python/examples/example.py --game=twixt\(board_size=12,ansi_color_output=False,discount=0.999\)
 
 
 * board_size must be in [5..24], default=8
 * discount must be in [0.0..1.0], default=1.0
-* ansi_color_output must be true|false, default true
+* ansi_color_output must be True|False, default True
 
 
 ## Rules
