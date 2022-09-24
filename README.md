@@ -44,9 +44,6 @@ add_test(twixt_test twixt_test)
 
 ## Rules
 * this is a paper-and-pencil variant of TwixT without link removal and without crossing of own links. 
-* player 0 (X, red) has the top/bottom endlines, player 1 (O, blue) has the left/right endlines.
+* player 0 (x, red) has the top/bottom endlines, player 1 (o, blue) has the left/right endlines.
 * If a player has no more legal moves left - when it's his turn - the game is a draw.
-* The swap rule is implemented like this: 
-  * player 1 swaps by choosing the same square as player 0.
-  * the red peg is removed and a blue peg is positioned 90° clockwise instead.
-   
+* player 1 (o, blue) can swap player 0's first move by choosing the same move again - unless it is on an endline.    
