@@ -6,7 +6,7 @@ C++ implementation of the board game [TwixT](https://en.wikipedia.org/wiki/TwixT
 
 ## Installation
 
-* Clone deepmind's open_spiel [repository](https://github.com/deepmind/open_spiel) and follow the installation instructions
+* Clone deepmind's open_spiel [repository](https://github.com/deepmind/open_spiel) and follow the installation instructions but do not run the build script yet.
 * Clone this repository and copy the files `TwixT_for_open_spiel/open_spiel/games/twixt*` into `open_spiel/open_spiel/games`
 * Edit `open_spiel/open_spiel/games/CMakeLists.txt` and add the following lines
 ```
