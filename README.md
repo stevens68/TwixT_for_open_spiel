@@ -4,18 +4,21 @@ C++ implementation of the board game [TwixT](https://en.wikipedia.org/wiki/TwixT
 
 ![TwixT board](https://github.com/stevens68/TwixT_for_open_spiel/blob/master/pics/12x12game.JPG "TwixT board")
 
+
 ## Installation
 
-* Clone deepmind's open_spiel [repository](https://github.com/deepmind/open_spiel) and follow the installation instructions but do not run the build script yet.
-* Clone this repository and copy the files `TwixT_for_open_spiel/open_spiel/games/twixt*` into `open_spiel/open_spiel/games`
-* Edit `open_spiel/open_spiel/games/CMakeLists.txt` and add the following lines
+* clone deepmind's open_spiel [repository](https://github.com/deepmind/open_spiel) 
+* follow the installation instructions but do not run the build script yet.
+* clone this repository
+* copy the files `TwixT_for_open_spiel/open_spiel/games/twixt*` into `open_spiel/open_spiel/games`
+* edit `open_spiel/open_spiel/games/CMakeLists.txt` and add the following lines
 ```
 ...
 twixt.cc
 twixt.h
-twixt/twixtboard.cc
-twixt/twixtboard.h
-twixt/twixtcell.h 
+twixtboard.cc
+twixtboard.h
+twixtcell.h 
 ...
 
 ...
@@ -24,9 +27,9 @@ add_executable(twixt_test twixt_test.cc ${OPEN_SPIEL_OBJECTS}
 add_test(twixt_test twixt_test)
 ...
 ```
-* Edit `open_spiel/open_spiel/python/tests/pyspiel_test.py` and add `"twixt"` to the list of games.
-* Copy file `TwixT_for_open_spiel/open_spiel/integration_tests/playthroughs/twixt.txt` into `open_spiel/open_spiel/integration_tests/playthroughs/`
-* Build the targets as described [here](https://github.com/deepmind/open_spiel/blob/master/docs/install.md)
+* edit `open_spiel/open_spiel/python/tests/pyspiel_test.py` and add `"twixt"` to the list of games.
+* copy file `TwixT_for_open_spiel/open_spiel/integration_tests/playthroughs/twixt.txt` into `open_spiel/open_spiel/integration_tests/playthroughs/`
+* build the targets as described [here](https://github.com/deepmind/open_spiel/blob/master/docs/install.md)
 
 ## Examples
 
@@ -36,16 +39,15 @@ add_test(twixt_test twixt_test)
     
     ./build/examples/mcts_example --game=twixt -player1=mcts --player2=mcts --max_simulations=20000 --rollout_count=4 --verbose=true
     
-    python ./open_spiel/python/examples/example.py --game=twixt\(board_size=12,ansi_color_output=False,discount=0.999\)
+    python ./open_spiel/python/examples/example.py --game=twixt\(board_size=12,ansi_color_output=False\)
 
 
 * board_size must be in [5..24], default=8
-* discount must be in [0.0..1.0], default=1.0
 * ansi_color_output must be True|False, default True
 
 
 ## Rules
 * this is a paper-and-pencil variant of TwixT without link removal and without crossing of own links. 
 * player 0 (x, red) has the top/bottom endlines, player 1 (o, blue) has the left/right endlines.
-* If a player has no more legal moves left - when it's his turn - the game is a draw.
+* if a player has no more legal moves left - when it's his turn - the game is a draw.
 * player 1 (o, blue) can swap player 0's first move by choosing the same move again - unless it is on an endline.    
