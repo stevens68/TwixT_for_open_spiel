@@ -1,23 +1,60 @@
-#ifndef THIRD_PARTY_OPEN_SPIEL_GAMES_TWIXTCELL_H_
-#define THIRD_PARTY_OPEN_SPIEL_GAMES_TWIXTCELL_H_
+// Copyright 2019 DeepMind Technologies Limited
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-typedef std::pair<int, int> Move;
-typedef std::pair<Move, int> Link;
+#ifndef OPEN_SPIEL_GAMES_TWIXT_TWIXTCELL_H_
+#define OPEN_SPIEL_GAMES_TWIXT_TWIXTCELL_H_
+
+#include <utility>
+#include "open_spiel/spiel.h"
+
+struct Position {
+  int x;
+  int y;
+  Position operator+(const Position &p) {
+    return {x + p.x, y + p.y};
+  }
+  bool operator==(const Position &p) const {
+    return x == p.x && y == p.y;
+  }
+  bool operator<(const Position &p) const {
+    return x < p.x || (x == p.x && y < p.y);
+  }
+};
+
+struct Link {
+  Position position;
+  int direction;
+  bool operator==(const Link &l) const {
+    return position == l.position && direction == l.direction;
+  }
+  bool operator<(const Link &l) const {
+    return position < l.position ||
+      (position == l.position && direction < l.direction);
+  }
+};
 
 namespace open_spiel {
 namespace twixt {
 
-enum Border {
-	kStart,
-	kEnd,
-	kMaxBorder
-};
+enum Border { kStart, kEnd, kMaxBorder };
 
-const open_spiel::Player kRedPlayer=0;
-const open_spiel::Player kBluePlayer=1;
-const int kNumPlayers=2;
+const open_spiel::Player kRedPlayer = 0;
+const open_spiel::Player kBluePlayer = 1;
+const int kNumPlayers = 2;
 
-// eight directions of links from 0 to 7
+// eight directions of links from 0 to 7:q!
+
 enum Compass {
   kNNE,  // North-North-East, 1 right, 2 up
   kENE,  // East-North-East,  2 right, 1 up
@@ -31,53 +68,47 @@ enum Compass {
 };
 
 class Cell {
+ public:
+  int color() const { return color_; }
+  void set_color(int color) { color_ = color; }
+  void set_link(int dir) { links_ |= (1UL << dir); }
+  int links() const { return links_; }
 
-	private:
-		int mColor;
-		// bitmap of outgoing links from this cell
-		int mLinks = 0;
-		// bitmap of candidates of a player
-		// (neighbors that are empty or have same color)
-		int mCandidates[kNumPlayers] = { 0, 0 };
-		// bitmap of neighbors of same color that are blocked
-		int mBlockedNeighbors = 0;
-		// array of neighbor tuples
-		// (cells in knight's move distance that are on board)
-		Move mNeighbors[kMaxCompass];
-		// indicator if cell is linked to START|END border of player 0|1
-		bool mLinkedToBorder[kNumPlayers][kMaxBorder] = { {false, false}, {false, false} };
+  bool HasLink(int dir) const { return links_ & (1UL << dir); }
+  bool HasLinks() const { return links_ > 0; }
 
-	public:
-		int getColor() const { 	return mColor; };
-		void setColor(int color) { mColor = color; };
+  void SetBlockedNeighbor(int dir) { blocked_neighbors_ |= (1UL << dir); }
+  bool HasBlockedNeighbors() const { return blocked_neighbors_ > 0; }
+  bool HasBlockedNeighborsEast() const {
+    return (blocked_neighbors_ & 15UL) > 0;
+  }
 
-		void setLink(int dir) { mLinks |= (1UL << dir); };
-		int getLinks() const { return mLinks; };
-		bool isLinked(int cand) const { return mLinks & cand; };
-		bool hasLink(int dir) const {   return mLinks & (1UL << dir); };
-		bool hasLinks() const { return mLinks > 0; };
+  Position GetNeighbor(int dir) const { return neighbors_[dir]; }
+  void SetNeighbor(int dir, Position c) { neighbors_[dir] = c; }
 
-		int getCandidates(int player) { return mCandidates[player]; }
-		bool isCandidate(int player, int cand) const { return mCandidates[player] & cand; }
-		void setCandidate(int player, int dir) { mCandidates[player] |= (1UL << dir); };
-		void deleteCandidate(int player, int cand) { mCandidates[player] &= ~(cand); };
-		void deleteCandidate(int dir) {
-			mCandidates[kRedPlayer] &= ~(1UL << dir);
-			mCandidates[kBluePlayer] &= ~(1UL << dir);
-		};
+  void SetLinkedToBorder(int player, int border) {
+    linked_to_border_[player][border] = true;
+  }
 
-		void setBlockedNeighbor(int dir) { mBlockedNeighbors |= (1UL << dir); };
-		bool hasBlockedNeighbors() const { return mBlockedNeighbors > 0; };
+  bool IsLinkedToBorder(int player, int border) const {
+    return linked_to_border_[player][border];
+  }
 
-		Move getNeighbor(int dir) const { return mNeighbors[dir]; };
-		void setNeighbor(int dir, Move c) { mNeighbors[dir]=c; };
-
-		void setLinkedToBorder(int player, int border) { mLinkedToBorder[player][border] = true; };
-
-	    bool isLinkedToBorder(int player, int border) const { return mLinkedToBorder[player][border]; };
+ private:
+  int color_;
+  // bitmap of outgoing links from this cell
+  int links_ = 0;
+  // bitmap of neighbors same color that are blocked
+  int blocked_neighbors_ = 0;
+  // array of neighbor tuples
+  // (cells in knight's move distance that are on board)
+  Position neighbors_[kMaxCompass];
+  // indicator if cell is linked to START|END border of player 0|1
+  bool linked_to_border_[kNumPlayers][kMaxBorder] = {{false, false},
+                                                   {false, false}};
 };
 
 }  // namespace twixt
 }  // namespace open_spiel
 
-#endif  // THIRD_PARTY_OPEN_SPIEL_GAMES_TWIXTCELL_H_
+#endif  // OPEN_SPIEL_GAMES_TWIXT_TWIXTCELL_H_
